@@ -1193,6 +1193,7 @@ export interface SettingsView {
   plannerModel: string;
   subagentModel: string;
   subagentEffort: string;
+  guardianModel: string;
   autoPlan: string;
   providers: ProviderView[];
   officialProviders: ProviderView[];

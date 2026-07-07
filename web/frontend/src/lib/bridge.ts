@@ -289,6 +289,7 @@ export interface AppBindings {
   SetDefaultModel(ref: string): Promise<void>;
   SetPlannerModel(ref: string): Promise<void>;
   SetSubagentModel(ref: string): Promise<void>;
+  SetGuardianModel(ref: string): Promise<void>;
   SetSubagentEffort(level: string): Promise<void>;
   SetMaxSubagentDepth(depth: number): Promise<void>;
   SetAutoPlan(mode: string): Promise<void>;
@@ -716,7 +717,7 @@ function bridgeBreadcrumb(method: string): string {
   if (method === "ReportCrash") return "";
   if (/^(Submit|SubmitDisplay|RunShell|Steer|Cancel|Approve|AnswerQuestion|ReplayPendingPrompts)/.test(method))
     return `turn ${method}`;
-  if (/^(SetModel|SetEffort|SetTokenMode|SetDefaultModel|SetPlannerModel|SetSubagentModel|SetSubagentEffort|SetMaxSubagentDepth)/.test(method))
+  if (/^(SetModel|SetEffort|SetTokenMode|SetDefaultModel|SetPlannerModel|SetSubagentModel|SetGuardianModel|SetSubagentEffort|SetMaxSubagentDepth)/.test(method))
     return `model ${method}`;
   if (/^(SetDesktop|SetCloseBehavior|SetDisplayMode|SetStatusBar|SetExpandThinking|SetAutoPlan|SetDefaultToolApprovalMode|SetMemoryCompilerEnabled|SetReasoningLanguage)/.test(method))
     return `settings ${method}`;
@@ -1156,6 +1157,7 @@ function makeMockApp(): AppBindings {
     plannerModel: "",
     subagentModel: "",
     subagentEffort: "",
+    guardianModel: "",
     autoPlan: "off",
     providers: [
       { name: "deepseek", builtIn: true, added: false, kind: "openai", baseUrl: "https://api.deepseek.com", modelsUrl: "", models: ["deepseek-v4-flash"], visionModels: [], visionModelsConfigured: false, default: "deepseek-v4-flash", apiKeyEnv: "DEEPSEEK_API_KEY", keySet: true, balanceUrl: "https://api.deepseek.com/user/balance", contextWindow: 1_000_000, reasoningProtocol: "", thinking: "", supportedEfforts: [], defaultEffort: "" },
@@ -3167,6 +3169,9 @@ function makeMockApp(): AppBindings {
     },
     async SetSubagentEffort(level: string) {
       settings.subagentEffort = level;
+    },
+    async SetGuardianModel(ref: string) {
+      settings.guardianModel = ref;
     },
     async SetMaxSubagentDepth(depth: number) {
       settings.agent = { ...settings.agent, maxSubagentDepth: depth <= 1 ? 1 : 2 };

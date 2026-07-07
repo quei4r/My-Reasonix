@@ -251,6 +251,7 @@ type SettingsView struct {
 	PlannerModel            string               `json:"plannerModel"`
 	SubagentModel           string               `json:"subagentModel"`
 	SubagentEffort          string               `json:"subagentEffort"`
+	GuardianModel           string               `json:"guardianModel"`
 	AutoPlan                string               `json:"autoPlan"`
 	Providers               []ProviderView       `json:"providers"`
 	OfficialProviders       []ProviderView       `json:"officialProviders"`
@@ -831,6 +832,7 @@ func (a *App) Settings() SettingsView {
 		PlannerModel:      cfg.Agent.PlannerModel,
 		SubagentModel:     cfg.Agent.SubagentModel,
 		SubagentEffort:    cfg.Agent.SubagentEffort,
+		GuardianModel:     cfg.Agent.GuardianModel,
 		AutoPlan:          desktopAutoPlanMode(cfg.Agent.AutoPlan),
 		Providers:         []ProviderView{},
 		OfficialProviders: []ProviderView{},
@@ -859,7 +861,7 @@ func (a *App) Settings() SettingsView {
 				Password: cfg.Network.Proxy.Password,
 			},
 		},
-		Agent:                   AgentView{Temperature: cfg.Agent.Temperature, MaxSteps: cfg.Agent.MaxSteps, PlannerMaxSteps: cfg.Agent.PlannerMaxSteps, MaxSubagentDepth: desktopMaxSubagentDepth(cfg.Agent.MaxSubagentDepth), SystemPrompt: cfg.Agent.SystemPrompt, ColdResumePrune: cfg.ColdResumePruneEnabled(), ReasoningLanguage: cfg.ReasoningLanguage()},
+		Agent:                   AgentView{Temperature: cfg.Agent.Temperature, MaxSteps: cfg.Agent.MaxSteps, PlannerMaxSteps: cfg.Agent.PlannerMaxSteps, MaxSubagentDepth: desktopMaxSubagentDepth(cfg.Agent.MaxSubagentDepth), SystemPrompt: cfg.Agent.SystemPrompt, ColdResumePrune: cfg.ColdResumePruneEnabled(), ReasoningLanguage: cfg.ReasoningLanguage(), },
 		Bot:                     botSettingsView(cfg.Bot),
 		DesktopLanguage:         cfg.DesktopLanguage(),
 		DesktopLayoutStyle:      cfg.DesktopLayoutStyle(),
@@ -1671,6 +1673,22 @@ func (a *App) SetSubagentModel(ref string) error {
 			ref = resolved
 		}
 		c.Agent.SubagentModel = ref
+		return nil
+	})
+}
+
+// SetGuardianModel sets (or, with "", clears) the LLM safety reviewer model.
+func (a *App) SetGuardianModel(ref string) error {
+	return a.applyConfigChange(func(c *config.Config) error {
+		ref = strings.TrimSpace(ref)
+		if ref != "" {
+			resolved, err := selectableDesktopModelRef(c, ref)
+			if err != nil {
+				return err
+			}
+			ref = resolved
+		}
+		c.Agent.GuardianModel = ref
 		return nil
 	})
 }

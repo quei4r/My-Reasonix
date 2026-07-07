@@ -4080,6 +4080,17 @@ function ModelsSection({ s, busy, apply, backgroundApply }: ModelsSectionProps) 
               />
             </SettingsField>
 
+            <SettingsField label={t("settings.guardianModel")} hint={t("settings.guardianModelHint")}>
+              <ModelPicker
+                s={s}
+                refs={refs}
+                value={s.guardianModel || ""}
+                disabled={busy}
+                emptyOptionLabel={t("settings.guardianModelDisabled")}
+                onPick={(ref) => void apply(() => app.SetGuardianModel(ref))}
+              />
+            </SettingsField>
+
             <SettingsField label={t("settings.subagentEffort")} hint={t("settings.subagentHint")}>
               <select
                 className="mem-select set-grow"

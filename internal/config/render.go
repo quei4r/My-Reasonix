@@ -253,6 +253,11 @@ func RenderTOMLForScope(c *Config, scope RenderScope) string {
 	} else {
 		b.WriteString("# subagent_model = \"deepseek-pro\"   # optional default for runAs=subagent skills\n")
 	}
+	if c.Agent.GuardianModel != "" {
+		fmt.Fprintf(&b, "guardian_model = %q   # LLM safety reviewer for tool-call auto-approval\n", c.Agent.GuardianModel)
+	} else {
+		b.WriteString("# guardian_model = \"deepseek-pro\"   # optional: enable LLM safety reviewer (Guardian)\n")
+	}
 	if len(c.Agent.SubagentModels) > 0 {
 		fmt.Fprintf(&b, "subagent_models = %s   # per-skill overrides\n", renderStringMap(c.Agent.SubagentModels))
 	} else {
@@ -826,6 +831,10 @@ func RenderTOMLProjectDelta(c *Config) string {
 	}
 	if c.Agent.SubagentModel != "" && c.Agent.SubagentModel != d.Agent.SubagentModel {
 		fmt.Fprintf(&agentBuf, "subagent_model = %q\n", c.Agent.SubagentModel)
+		anyAgent = true
+	}
+	if c.Agent.GuardianModel != "" && c.Agent.GuardianModel != d.Agent.GuardianModel {
+		fmt.Fprintf(&agentBuf, "guardian_model = %q\n", c.Agent.GuardianModel)
 		anyAgent = true
 	}
 	if len(c.Agent.SubagentModels) > 0 && !reflect.DeepEqual(c.Agent.SubagentModels, d.Agent.SubagentModels) {
