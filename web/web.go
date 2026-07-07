@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	webRuntime "reasonix/web/runtime"
@@ -172,7 +174,7 @@ func handleEvents(app *App) http.HandlerFunc {
 			return
 		}
 
-		sink := newSSESink(w, flusher)
+		sink := newSSESink(w, flusher, r.Context())
 		webRuntime.RegisterEventSubscriber(sink)
 		defer func() {
 			webRuntime.UnregisterEventSubscriber(sink)
@@ -187,31 +189,46 @@ type sseSink struct {
 	w     io.Writer
 	flush http.Flusher
 	done  chan struct{}
+	once  sync.Once
+	ctx   context.Context
+	mu    sync.Mutex
+	wg    sync.WaitGroup
 }
 
-func newSSESink(w io.Writer, flush http.Flusher) *sseSink {
-	return &sseSink{w: w, flush: flush, done: make(chan struct{})}
+func newSSESink(w io.Writer, flush http.Flusher, ctx context.Context) *sseSink {
+	return &sseSink{w: w, flush: flush, done: make(chan struct{}), ctx: ctx}
 }
 
 func (s *sseSink) Emit(name string, data ...any) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.wg.Add(1)
+	defer s.wg.Done()
+
 	select {
 	case <-s.done:
 		return
 	default:
 	}
-	defer func() {
-		if r := recover(); r != nil {
-			// Connection closed — the response writer has been recycled.
-			close(s.done)
-		}
-	}()
+	if s.ctx != nil && s.ctx.Err() != nil {
+		return
+	}
 	payload, _ := json.Marshal(map[string]any{"name": name, "data": data})
-	fmt.Fprintf(s.w, "data: %s\n\n", payload)
+	_, wErr := fmt.Fprintf(s.w, "data: %s\n\n", payload)
 	s.flush.Flush()
+	if wErr != nil {
+		select {
+		case <-s.done:
+		default:
+			s.once.Do(func() { close(s.done) })
+		}
+	}
 }
 
 func (s *sseSink) Close() {
-	close(s.done)
+	s.once.Do(func() { close(s.done) })
+	s.wg.Wait()
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

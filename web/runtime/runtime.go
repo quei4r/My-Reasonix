@@ -6,7 +6,10 @@ package runtime
 import (
 	"context"
 	"sync"
+	"time"
 )
+
+const emitTimeout = 5 * time.Second
 
 // EventSubscriber receives events that would otherwise be emitted to the Wails
 // runtime. The web server registers one subscriber per active SSE connection.
@@ -72,7 +75,10 @@ type MessageDialogOptions struct {
 	CancelButton  string
 }
 
-// EventsEmit forwards to all registered subscribers.
+// EventsEmit forwards to all registered subscribers concurrently so a slow or
+// broken connection does not block other clients. A stale subscriber (half-closed
+// TCP connection) can block Fprintf/Flush for seconds; sequential iteration would
+// stall every subscriber behind it, causing cascading ERR_INCOMPLETE_CHUNKED_ENCODING.
 func EventsEmit(ctx context.Context, eventName string, data ...any) {
 	eventSubscribersMu.RLock()
 	subs := make([]EventSubscriber, 0, len(eventSubscribers))
@@ -80,9 +86,23 @@ func EventsEmit(ctx context.Context, eventName string, data ...any) {
 		subs = append(subs, s)
 	}
 	eventSubscribersMu.RUnlock()
+	var wg sync.WaitGroup
 	for _, s := range subs {
-		s.Emit(eventName, data...)
+		wg.Add(1)
+		go func(sub EventSubscriber) {
+			defer wg.Done()
+			done := make(chan struct{}, 1)
+			go func() {
+				sub.Emit(eventName, data...)
+				done <- struct{}{}
+			}()
+			select {
+			case <-done:
+			case <-time.After(emitTimeout):
+			}
+		}(s)
 	}
+	wg.Wait()
 }
 
 // BrowserOpenURL is a no-op in web mode.
