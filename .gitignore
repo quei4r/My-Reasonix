@@ -56,6 +56,7 @@ node_modules/
 Thumbs.db
 .idea/
 .vscode/
+/log
 /site/public/av/
 
 benchmarks/context-maintenance-e2e/run/

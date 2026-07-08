@@ -4,7 +4,7 @@ import * as path from "path";
 import * as http from "http";
 
 const DEFAULT_PORT = 18765;
-const BINARY_NAME = "reasonix-web";
+const BINARY_NAME = "my-reasonix";
 
 let backendProcess: ChildProcess | null = null;
 
@@ -56,7 +56,7 @@ export function activate(context: vscode.ExtensionContext) {
 	backendProcess = spawn(binaryPath, [], {
 		env: {
 			...process.env,
-			REASONIX_WEB_ADDR: `127.0.0.1:${port}`,
+			MY_REASONIX_ADDR: `127.0.0.1:${port}`,
 		},
 		stdio: ["ignore", "pipe", "pipe"],
 	});
@@ -65,20 +65,20 @@ export function activate(context: vscode.ExtensionContext) {
 		console.log("[reasonix-web]", d.toString().trimEnd());
 	});
 	backendProcess.stderr?.on("data", (d: Buffer) => {
-		console.error("[reasonix-web:err]", d.toString().trimEnd());
+		console.error("[my-reasonix:err]", d.toString().trimEnd());
 	});
 	backendProcess.on("exit", (code) => {
-		console.log(`[reasonix-web] exited with code ${code}`);
+		console.log(`[my-reasonix] exited with code ${code}`);
 		backendProcess = null;
 	});
 
 	// Wait for backend to start, then register the webview provider
 	waitForHealth(port)
 		.then(() => {
-			console.log("[reasonix-web] ready");
+			console.log("[my-reasonix] ready");
 		})
 		.catch((err) => {
-			void vscode.window.showErrorMessage(`Reasonix backend failed: ${err.message}`);
+			void vscode.window.showErrorMessage(`My Reasonix backend failed: ${err.message}`);
 		});
 
 	// Register the sidebar webview provider

@@ -1,4 +1,4 @@
-// Command reasonix-web is a browser-hosted wrapper over the Reasonix kernel.
+// Command my-reasonix is a browser-hosted wrapper over the Reasonix kernel.
 // It exposes the same desktop App through an HTTP/SSE server so the React frontend
 // can run in a plain browser without the Wails native shell.
 package main
@@ -42,6 +42,10 @@ func macSelfUpdateAllowed() bool {
 }
 
 func main() {
+	// Route slog output through stdout so the VSCode extension host sees it on
+	// the clean [my-reasonix] channel instead of the red [my-reasonix:err] channel.
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, nil)))
+
 	if code, ok := runWindowsSandboxHelperIfRequested(os.Args); ok {
 		os.Exit(code)
 	}
@@ -54,7 +58,7 @@ func main() {
 	app.startup(ctx)
 
 	handler := newWebServer(app, assets)
-	addr := getenv("REASONIX_WEB_ADDR", "127.0.0.1:8765")
+	addr := getenv("MY_REASONIX_ADDR", "127.0.0.1:8765")
 	srv := &http.Server{Addr: addr, Handler: handler}
 
 	go func() {
@@ -62,7 +66,7 @@ func main() {
 		_ = srv.Shutdown(context.Background())
 	}()
 
-	fmt.Printf("reasonix-web listening on http://%s\n", addr)
+	fmt.Printf("my-reasonix listening on http://%s\n", addr)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		slog.Error("server error", "error", err)
 		os.Exit(1)

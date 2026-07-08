@@ -1,6 +1,6 @@
 {
-  "name": "reasonix-vscode",
-  "displayName": "Reasonix",
+  "name": "my-reasonix",
+  "displayName": "My Reasonix",
   "description": "AI coding agent in your sidebar — powered by DeepSeek",
   "version": "0.1.0",
   "publisher": "quei4r",
@@ -20,7 +20,7 @@
       "activitybar": [
         {
           "id": "reasonix-sidebar",
-          "title": "Reasonix",
+          "title": "My Reasonix",
           "icon": "assets/icon.svg"
         }
       ]
@@ -30,7 +30,7 @@
         {
           "type": "webview",
           "id": "reasonix.sidebarPanel",
-          "name": "Reasonix"
+          "name": "My Reasonix"
         }
       ]
     }

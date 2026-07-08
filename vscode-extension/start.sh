@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 # Clean build artifacts.
 if [[ "${1:-}" == "clean" ]]; then
   echo "[start] cleaning..."
-  rm -f reasonix-web
+  rm -f my-reasonix
   rm -rf frontend/dist
   echo "[start] done"
   exit 0
@@ -20,10 +20,10 @@ fi
 
 # Build Go binary if missing, if Go source changed, or if frontend dist changed
 # (frontend is embedded into the binary at compile time).
-if [[ ! -x reasonix-web ]] || [[ $(find . -maxdepth 1 -name '*.go' -newer reasonix-web | wc -l) -gt 0 ]] || [[ frontend/dist -nt reasonix-web ]]; then
+if [[ ! -x my-reasonix ]] || [[ $(find . -maxdepth 1 -name '*.go' -newer my-reasonix | wc -l) -gt 0 ]] || [[ frontend/dist -nt my-reasonix ]]; then
   echo "[start] building Go backend..."
-  CGO_ENABLED=0 go build -o reasonix-web .
+  CGO_ENABLED=0 go build -o my-reasonix .
 fi
 
-echo "[start] launching reasonix-web on http://127.0.0.1:8765"
-exec ./reasonix-web "$@"
+echo "[start] launching my-reasonix on http://127.0.0.1:8765"
+exec ./my-reasonix "$@"
