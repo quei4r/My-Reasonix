@@ -1,0 +1,46 @@
+{
+  "name": "reasonix-vscode",
+  "displayName": "Reasonix",
+  "description": "AI coding agent in your sidebar — powered by DeepSeek",
+  "version": "0.1.0",
+  "publisher": "quei4r",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:reasonix.sidebarPanel"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "reasonix-sidebar",
+          "title": "Reasonix",
+          "icon": "assets/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "reasonix-sidebar": [
+        {
+          "type": "webview",
+          "id": "reasonix.sidebarPanel",
+          "name": "Reasonix"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./tsconfig.json",
+    "watch": "tsc -watch -p ./tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  }
+}
