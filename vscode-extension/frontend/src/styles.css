@@ -5350,13 +5350,6 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* ── footer: composer + status line ──────────────────────────────────────── */
-.footer {
-  flex: 0 0 auto;
-  border-top: 1px solid var(--border-soft);
-  background: var(--chat-bg);
-  padding: 12px 32px 10px;
-}
-
 /* ── undo-rewind banner (above composer after a rewind) ─────────────── */
 .undo-rewind {
   display: flex;
@@ -17825,9 +17818,6 @@ body > .mermaid-diagram--fullscreen {
   .jump-bar {
     display: none;
   }
-  .footer {
-    padding: 10px 16px 8px;
-  }
   .prompt-shelf__card {
     padding: 10px;
   }
@@ -19464,6 +19454,52 @@ body > .mermaid-diagram--fullscreen {
 .topicbar__export-menu button:focus-visible {
   color: var(--fg);
   background: var(--button-bg);
+}
+
+/* VSCode extension overflow (···) menu — same visual as export-menu */
+.topicbar__overflow-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.topicbar__overflow-menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 7px);
+  z-index: var(--z-app-chrome);
+  min-width: 172px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elev);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.34);
+}
+
+.topicbar__overflow-menu-dropdown button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 9px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg-dim);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.topicbar__overflow-menu-dropdown button:hover,
+.topicbar__overflow-menu-dropdown button:focus-visible {
+  color: var(--fg);
+  background: var(--button-bg);
+}
+
+.topicbar__overflow-menu-separator {
+  height: 1px;
+  margin: 5px 0;
+  background: var(--border);
 }
 
 .topicbar__icon-btn {

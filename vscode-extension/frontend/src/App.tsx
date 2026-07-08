@@ -8,21 +8,18 @@ import { ScrollToPlugin } from "gsap/ScrollToPlugin";
 gsap.registerPlugin(useGSAP, Flip, ScrollToPlugin);
 import {
   Activity,
-  CircleHelp,
   Command,
+  Copy,
   Copy as RestoreIcon,
-  Download,
+  GitBranch,
   Minus,
   Search,
   Square,
   SquarePen,
-  PanelLeft,
-  PanelRight,
   FileDown,
   FileImage,
   FileText,
   FileJson,
-  GitBranch,
   History,
   MessageSquare,
   Settings as SettingsIcon,
@@ -31,6 +28,8 @@ import {
   AlarmClock,
   Brain,
   Cpu,
+  Keyboard,
+  MoreHorizontal,
   Palette,
   X,
 } from "lucide-react";
@@ -49,7 +48,6 @@ import { ApprovalModal } from "./components/ApprovalModal";
 import { AskCard } from "./components/AskCard";
 import { UndoRewindBanner } from "./components/UndoRewindBanner";
 import { ClearContextCard } from "./components/ClearContextCard";
-import { StatusBar } from "./components/StatusBar";
 import { CommandPalette, type PaletteItem } from "./components/CommandPalette";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { ContextPanel } from "./components/ContextPanel";
@@ -138,7 +136,6 @@ import {
 } from "./store/layout";
 import { useOverlayStore } from "./store/overlays";
 import { hydrateDisplayMode } from "./lib/displayMode";
-import { DEFAULT_STATUS_BAR_ITEMS, normalizeStatusBarItems, type StatusBarItemId } from "./lib/statusBarItems";
 import { paletteSessionDisplayTitle, paletteSessionHint, paletteSessionKeywords, sessionActivityTime } from "./lib/session";
 import { enqueueNavigationRequest, type PendingNavigationRequest } from "./lib/openTopicCoalescing";
 import {
@@ -1043,8 +1040,6 @@ export default function App() {
   const setTransientOverlayDismissSignal = useOverlayStore((s) => s.setTransientOverlayDismissSignal);
   const [desktopPlatform, setDesktopPlatform] = useState<DesktopPlatform>(detectBrowserPlatform);
   useWailsResizeFix(desktopPlatform === "windows");
-  const [statusBarStyle, setStatusBarStyle] = useState<"icon" | "text">("text");
-  const [statusBarItems, setStatusBarItems] = useState<StatusBarItemId[]>(() => [...DEFAULT_STATUS_BAR_ITEMS]);
   const [renamingTopicId, setRenamingTopicId] = useState<string | null>(null);
   const [topicTitleDraft, setTopicTitleDraft] = useState("");
   const topicExportOpen = useOverlayStore((s) => s.topicExportOpen);
@@ -1172,15 +1167,13 @@ export default function App() {
   }, []);
 
   const applyDesktopPreferences = useCallback(
-    (settings: Pick<SettingsView, "desktopTheme" | "desktopThemeStyle" | "desktopLayoutStyle" | "desktopLanguage" | "checkUpdates" | "statusBarStyle" | "statusBarItems">) => {
+    (settings: Pick<SettingsView, "desktopTheme" | "desktopThemeStyle" | "desktopLayoutStyle" | "desktopLanguage" | "checkUpdates">) => {
       const nextTheme = normalizeThemePreference(settings.desktopTheme);
       const nextStyle = normalizeThemeStyleForTheme(settings.desktopThemeStyle, nextTheme);
       applyTheme(nextTheme, nextStyle, { persist: false });
       setDesktopLayoutStyle(normalizeDesktopLayoutStyle(settings.desktopLayoutStyle));
       setLocalePref(normalizeLangPref(settings.desktopLanguage));
       setStartupUpdateChecksEnabled(settings.checkUpdates !== false);
-      setStatusBarStyle(settings.statusBarStyle === "text" ? "text" : "icon");
-      setStatusBarItems(normalizeStatusBarItems(settings.statusBarItems));
     },
     [setLocalePref],
   );
@@ -1237,9 +1230,6 @@ export default function App() {
   }, []);
 
   const [pendingPlanRevision, setPendingPlanRevision] = useState<string | null>(null);
-  const [footerHeight, setFooterHeight] = useState(0);
-  const footerHeightRef = useRef(0);
-  const footerRef = useRef<HTMLElement>(null);
   const runningRef = useRef(state.running);
   const activeTabIdRef = useRef(activeTabId);
   const commitThenSendRef = useRef<(displayText: string, submitText?: string) => Promise<void>>(async () => {});
@@ -1563,11 +1553,18 @@ export default function App() {
     [sessionTitle, state.items, state.live],
   );
 
+  const copySessionMarkdown = useCallback(() => {
+    const text = getSessionMarkdown();
+    navigator.clipboard.writeText(text).catch((err) => {
+      console.error("Failed to copy session", err);
+    });
+  }, [getSessionMarkdown]);
+
   useEffect(() => {
     if (!topicExportOpen) return;
     const onDown = (event: MouseEvent) => {
       const target = event.target as Element | null;
-      if (!target?.closest(".topicbar__export")) setTopicExportOpen(false);
+      if (!target?.closest(".topicbar__overflow-menu")) setTopicExportOpen(false);
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
@@ -1834,29 +1831,6 @@ export default function App() {
     })();
     return () => {
       cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    const el = footerRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    let frame = 0;
-    const update = () => {
-      if (frame) window.cancelAnimationFrame(frame);
-      frame = window.requestAnimationFrame(() => {
-        frame = 0;
-        const next = Math.round(el.getBoundingClientRect().height);
-        if (Math.abs(footerHeightRef.current - next) < 2) return;
-        footerHeightRef.current = next;
-        setFooterHeight(next);
-      });
-    };
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    return () => {
-      if (frame) window.cancelAnimationFrame(frame);
-      observer.disconnect();
     };
   }, []);
 
@@ -3216,40 +3190,11 @@ export default function App() {
           onKeyDown={resizeSidebarWithKeyboard}
           onDoubleClick={() => setExpandedSidebarWidth(defaultSidebarWidth())}
         />
-        {sidebarCreation && (
-          <button
-            className={`sidebar-collapse-toggle${sidebarCollapsed ? " sidebar-collapse-toggle--collapsed" : ""}${sidebarTogglePressed ? " sidebar-collapse-toggle--pressed" : ""}`}
-            type="button"
-            onClick={toggleSidebar}
-            aria-label={sidebarToggleTitle}
-            aria-pressed={!sidebarCollapsed}
-            title={sidebarToggleTitle}
-          >
-            {sidebarCollapsed ? <PanelRight size={14} /> : <PanelLeft size={14} />}
-          </button>
-        )}
+        {/* sidebar collapse toggle removed for VSCode extension */}
 
         <section className={`chat-pane${sidebarCreation && !sessionHasContent ? " chat-pane--creation-empty" : ""}`}>
           <>
           <header className="topicbar">
-            {workbenchChromeHidden && (
-              <Tooltip label={sidebarToggleTitle}>
-                <button
-                  className={[
-                    "topicbar__chrome-btn",
-                    sidebarExpandBlocked ? "topicbar__chrome-btn--blocked" : "",
-                    sidebarTogglePressed ? "topicbar__chrome-btn--pressed" : "",
-                  ].filter(Boolean).join(" ")}
-                  type="button"
-                  onClick={sidebarExpandBlocked ? undefined : toggleSidebar}
-                  aria-label={sidebarToggleTitle}
-                  aria-pressed={!sidebarCollapsed}
-                  aria-disabled={sidebarExpandBlocked}
-                >
-                  <PanelLeft size={15} />
-                </button>
-              </Tooltip>
-            )}
             <div className="topicbar__identity">
               <div className="topicbar__title-row">
                 {topicbarEditing ? (
@@ -3315,126 +3260,50 @@ export default function App() {
             </div>
             <div className="topicbar__spacer" />
             <div className="topicbar__actions">
-              {workbenchChromeHidden && (
-                <Tooltip label={workspacePanelRenderable ? t("rightDock.collapse") : t("rightDock.expand")}>
+              {/* VSCode extension: collapsed into ··· menu */}
+              <div className={`topicbar__overflow-menu${topicExportOpen ? " topicbar__overflow-menu--open" : ""}`}>
+                <Tooltip label={t("topicBar.more")}>
                   <button
-                    className={[
-                      "topicbar__chrome-btn",
-                      "topicbar__chrome-btn--workspace",
-                      workspacePanelRenderable ? "topicbar__chrome-btn--active" : "",
-                      workspaceTogglePressed ? "topicbar__chrome-btn--pressed" : "",
-                    ].filter(Boolean).join(" ")}
+                    className="topicbar__action-btn topicbar__action-btn--icon topicbar__action-btn--overflow"
                     type="button"
-                    onClick={toggleWorkspacePanel}
-                    aria-label={workspacePanelRenderable ? t("rightDock.collapse") : t("rightDock.expand")}
-                    aria-pressed={workspacePanelRenderable}
-                  >
-                    <PanelRight size={15} />
-                  </button>
-                </Tooltip>
-              )}
-              {!sidebarImDetailConnection && (
-              <>
-              <Tooltip label={t("topicBar.copyAll")}>
-                <CopyButton
-                  getText={getSessionMarkdown}
-                  label={t("topicBar.copyAll")}
-                  className="topicbar__action-btn topicbar__action-btn--icon topicbar__action-btn--utility"
-                  showInlineLabel={false}
-                />
-              </Tooltip>
-              <div className={`topicbar__export${topicExportOpen ? " topicbar__export--open" : ""}`}>
-                <Tooltip label={t("topicBar.export")}>
-                  <button
-                    className="topicbar__action-btn topicbar__action-btn--icon topicbar__action-btn--utility"
-                    type="button"
-                    disabled={!sessionHasContent}
-                    aria-label={t("topicBar.export")}
+                    aria-label={t("topicBar.more")}
                     aria-haspopup="menu"
                     aria-expanded={topicExportOpen}
                     onClick={() => setTopicExportOpen((open) => !open)}
                   >
-                    <Download size={14} />
+                    <MoreHorizontal size={15} />
                   </button>
                 </Tooltip>
                 {topicExportOpen && (
-                  <div className="topicbar__export-menu" role="menu">
-                    <button type="button" role="menuitem" onClick={() => void exportSession("markdown")}>
+                  <div className="topicbar__overflow-menu-dropdown" role="menu">
+                    <button type="button" role="menuitem" onClick={() => { setTopicExportOpen(false); void copySessionMarkdown(); }}>
+                      <Copy size={13} />
+                      <span>{t("topicBar.copyAll")}</span>
+                    </button>
+                    <button type="button" role="menuitem" onClick={() => { setTopicExportOpen(false); void exportSession("markdown"); }}>
                       <FileText size={13} />
                       <span>{t("topicBar.exportMarkdown")}</span>
                     </button>
-                    <button type="button" role="menuitem" onClick={() => void exportSession("json")}>
+                    <button type="button" role="menuitem" onClick={() => { setTopicExportOpen(false); void exportSession("json"); }}>
                       <FileJson size={13} />
                       <span>{t("topicBar.exportJson")}</span>
                     </button>
-                    <button type="button" role="menuitem" onClick={() => void exportSession("pdf")}>
+                    <button type="button" role="menuitem" onClick={() => { setTopicExportOpen(false); void exportSession("pdf"); }}>
                       <FileDown size={13} />
                       <span>{t("topicBar.exportPdf")}</span>
                     </button>
-                    <button type="button" role="menuitem" onClick={() => void exportSession("image")}>
+                    <button type="button" role="menuitem" onClick={() => { setTopicExportOpen(false); void exportSession("image"); }}>
                       <FileImage size={13} />
                       <span>{t("topicBar.exportImage")}</span>
+                    </button>
+                    <div className="topicbar__overflow-menu-separator" role="separator" />
+                    <button type="button" role="menuitem" onClick={() => { setTopicExportOpen(false); closeTransientOverlays(); setSettingsTarget("shortcuts"); }}>
+                      <Keyboard size={13} />
+                      <span>{t("shortcuts.cheatsheetTitle")}</span>
                     </button>
                   </div>
                 )}
               </div>
-              </>
-              )}
-              <Tooltip label={t("workspace.changedTab")}>
-                <button
-                  className="topicbar__action-btn topicbar__action-btn--label"
-                  type="button"
-                  aria-label={t("workspace.changedTab")}
-                  aria-pressed={workspacePanelRenderable && rightDockMode === "changed"}
-                  onClick={() => openRightDockMode("changed")}
-                >
-                  <GitBranch size={14} />
-                  <span>{t("workspace.changedTab")}</span>
-                </button>
-              </Tooltip>
-              <Tooltip label={t("shortcuts.cheatsheetTitle")}>
-                <button
-                  className="topicbar__action-btn topicbar__action-btn--icon topicbar__action-btn--utility"
-                  type="button"
-                  aria-label={t("shortcuts.cheatsheetTitle")}
-                  onClick={() => {
-                    closeTransientOverlays();
-                    setSettingsFocus(null);
-                    setSettingsTarget("shortcuts");
-                  }}
-                >
-                  <CircleHelp size={14} />
-                </button>
-              </Tooltip>
-              <Tooltip label={t("topicBar.command")}>
-                <button
-                  className="topicbar__action-btn topicbar__action-btn--label topicbar__action-btn--accent"
-                  type="button"
-                  aria-label={t("topicBar.command")}
-                  onClick={() => void openPalette()}
-                >
-                  <Command size={14} />
-                  <span>{t("topicBar.command")}</span>
-                </button>
-              </Tooltip>
-              {sidebarCreation && (
-                <Tooltip label={workspacePanelRenderable ? t("rightDock.collapse") : t("rightDock.expand")}>
-                  <button
-                    className={[
-                      "topicbar__chrome-btn",
-                      "topicbar__chrome-btn--workspace",
-                      workspacePanelRenderable ? "topicbar__chrome-btn--active" : "",
-                      workspaceTogglePressed ? "topicbar__chrome-btn--pressed" : "",
-                    ].filter(Boolean).join(" ")}
-                    type="button"
-                    onClick={toggleWorkspacePanel}
-                    aria-label={workspacePanelRenderable ? t("rightDock.collapse") : t("rightDock.expand")}
-                    aria-pressed={workspacePanelRenderable}
-                  >
-                    <PanelRight size={15} />
-                  </button>
-                </Tooltip>
-              )}
             </div>
           </header>
 
@@ -3465,7 +3334,6 @@ export default function App() {
                 items={displayItems}
                 live={state.live}
                 tabId={activeTabId}
-                footerHeight={footerHeight}
                 onPrompt={handleTranscriptPrompt}
                 onEditPrompt={handleEditPrompt}
                 onRewind={handleMessageAction}
@@ -3488,7 +3356,7 @@ export default function App() {
           </main>
 
           {!sidebarImDetailConnection && (
-          <footer className="footer" ref={footerRef}>
+          <>
             {showTodos && (
               <TodoPanel
                 key={scopedTodoBatch}
@@ -3593,25 +3461,8 @@ export default function App() {
               guidanceConsumedText={latestGuidanceConsumed?.text}
               guidanceQueuePreviewItems={guidanceQueueMockItems}
             />
-            <StatusBar
-              context={state.context}
-              usage={state.usage}
-              balance={state.balance}
-              running={state.running || rewindCommitting}
-              sessionTurns={sessionTurns}
-              sessionTokens={state.sessionTokens}
-              turnTokens={state.turnTotalTokens}
-              turnCost={state.turnCost}
-              cost={state.sessionCost}
-              currency={state.sessionCurrency}
-              modelLabel={state.meta?.label}
-              labelStyle={statusBarStyle}
-              items={statusBarItems}
-	              workspacePath={state.meta?.workspacePath || state.meta?.workspaceRoot || state.meta?.cwd}
-	              workspaceName={state.meta?.workspaceName}
-	              gitBranch={state.meta?.gitBranch}
-            />
-          </footer>
+            {/* StatusBar removed for VSCode extension — too narrow */}
+          </>
           )}
           </>
         </section>
