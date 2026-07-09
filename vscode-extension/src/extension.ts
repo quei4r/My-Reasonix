@@ -8,8 +8,46 @@ const BINARY_NAME = "my-reasonix";
 
 let backendProcess: ChildProcess | null = null;
 
-function findBinary(extensionPath: string): string {
+function resolveProjectRoot(): string | undefined {
+	const wsFolders = vscode.workspace.workspaceFolders;
+	if (wsFolders && wsFolders.length > 0) return wsFolders[0].uri.fsPath;
+	const editor = vscode.window.activeTextEditor;
+	if (!editor || editor.document.isUntitled) return undefined;
+	const filePath = editor.document.uri.fsPath;
+	if (!filePath) return undefined;
+	const __require: any = require;
+	const p = __require("path");
+	const f = __require("fs");
+	let dir = p.dirname(filePath);
+	for (let i = 0; i < 8; i++) {
+		if (f.existsSync(p.join(dir, ".git"))) return dir;
+		const parent = p.dirname(dir);
+		if (parent === dir) break;
+		dir = parent;
+	}
+	return p.dirname(filePath);
+}
+
+function findBinary(extensionPath: string, isDev: boolean): string {
 	const fs = require("fs") as { existsSync(p: string): boolean };
+	// In dev/debug mode, prefer the binary built by F5 in the workspace source
+	// directory over the installed extension dir, so rebuilds don't need a
+	// separate deploy step and never hit "text file busy".
+	// Try multiple paths since the workspace root may be the repo root,
+	// the vscode-extension subdirectory, or something else entirely.
+	if (isDev) {
+		const wsFolders = vscode.workspace.workspaceFolders;
+		if (wsFolders && wsFolders.length > 0) {
+			const wsRoot = wsFolders[0].uri.fsPath;
+			const devCandidates = [
+				path.join(wsRoot, BINARY_NAME),                          // ws = vscode-extension/
+				path.join(wsRoot, "vscode-extension", BINARY_NAME),      // ws = repo root
+			];
+			for (const c of devCandidates) {
+				try { if (fs.existsSync(c)) return c; } catch { /* try next */ }
+			}
+		}
+	}
 	const candidates = [
 		path.join(extensionPath, BINARY_NAME),
 		path.join(extensionPath, BINARY_NAME + ".exe"),
@@ -50,13 +88,21 @@ function waitForHealth(port: number, timeoutMs = 15000): Promise<void> {
 
 export function activate(context: vscode.ExtensionContext) {
 	const port = DEFAULT_PORT;
-	const binaryPath = findBinary(context.extensionPath);
+	const binaryPath = findBinary(context.extensionPath, context.extensionMode === vscode.ExtensionMode.Development);
 
-	// Use the VSCode workspace folder as the backend's working directory so that
-	// file operations resolve to the project the user opened, not the extension
-	// host's default (e.g. ~ in WSL Remote).
-	const wsFolders = vscode.workspace.workspaceFolders;
-	const workspaceRoot = wsFolders && wsFolders.length > 0 ? wsFolders[0].uri.fsPath : undefined;
+	// Use the VSCode workspace folder (or active file's project root) as the
+	// backend's working directory so that file operations resolve to the project
+	// the user opened, not the extension host's default (e.g. ~ in WSL Remote).
+	const workspaceRoot = resolveProjectRoot();
+
+	// In dev mode, kill any stale backend on our port so the newly-built binary
+	// starts fresh (otherwise the old backend still serves the old frontend).
+	if (context.extensionMode === vscode.ExtensionMode.Development) {
+		try {
+			const _require: any = require;
+			_require("child_process").execSync(`fuser -k ${port}/tcp 2>/dev/null`);
+		} catch { /* fuser unavailable or nothing to kill */ }
+	}
 
 	// Start the Go backend
 	backendProcess = spawn(binaryPath, [], {
@@ -94,15 +140,14 @@ export function activate(context: vscode.ExtensionContext) {
 
 	waitForHealth(port)
 		.then(async () => {
-			// After backend starts, set workspace root to match VSCode current folder.
-			const ws = vscode.workspace.workspaceFolders;
-			setWorkspaceRoot(port, ws && ws.length > 0 ? ws[0].uri.fsPath : undefined);
+			// After backend starts, set workspace root to match VSCode current folder or active file.
+			setWorkspaceRoot(port, resolveProjectRoot());
 
 			// Also re-apply when workspace folders change (open/close a folder).
 			context.subscriptions.push(
 				vscode.workspace.onDidChangeWorkspaceFolders(() => {
-					const f = vscode.workspace.workspaceFolders;
-					setWorkspaceRoot(port, f && f.length > 0 ? f[0].uri.fsPath : undefined);
+						const f = vscode.workspace.workspaceFolders;
+						setWorkspaceRoot(port, f && f.length > 0 ? f[0].uri.fsPath : resolveProjectRoot());
 				}),
 			);
 

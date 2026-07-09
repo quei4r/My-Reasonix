@@ -1,0 +1,55 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build:frontend",
+      "type": "npm",
+      "script": "build",
+      "path": "vscode-extension/frontend",
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "group": "build"
+      }
+    },
+    {
+      "label": "build:go",
+      "type": "shell",
+      "command": "CGO_ENABLED=0 go build -o my-reasonix .",
+      "options": {
+        "cwd": "${workspaceFolder}/vscode-extension"
+      },
+      "group": "build",
+      "dependsOn": ["build:frontend"],
+      "dependsOrder": "sequence",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "group": "build"
+      }
+    },
+    {
+      "label": "build:extension",
+      "type": "npm",
+      "script": "compile",
+      "path": "vscode-extension",
+      "group": "build",
+      "problemMatcher": "$tsc-watch",
+      "presentation": {
+        "reveal": "silent",
+        "group": "build"
+      }
+    },
+    {
+      "label": "build:all",
+      "dependsOn": ["build:go", "build:extension"],
+      "dependsOrder": "sequence",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}

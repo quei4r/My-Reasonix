@@ -25,6 +25,8 @@ import {
   Settings as SettingsIcon,
   Pencil,
   Trash2,
+  RotateCcw,
+  Archive,
   AlarmClock,
   Brain,
   Cpu,
@@ -136,7 +138,7 @@ import {
 } from "./store/layout";
 import { useOverlayStore } from "./store/overlays";
 import { hydrateDisplayMode } from "./lib/displayMode";
-import { paletteSessionDisplayTitle, paletteSessionHint, paletteSessionKeywords, sessionActivityTime } from "./lib/session";
+import { historySessionDisplayTitle, paletteSessionDisplayTitle, paletteSessionHint, paletteSessionKeywords, sessionActivityTime } from "./lib/session";
 import { enqueueNavigationRequest, type PendingNavigationRequest } from "./lib/openTopicCoalescing";
 import {
   applyTheme,
@@ -1044,6 +1046,9 @@ export default function App() {
   const [topicTitleDraft, setTopicTitleDraft] = useState("");
   const topicExportOpen = useOverlayStore((s) => s.topicExportOpen);
   const setTopicExportOpen = useOverlayStore((s) => s.setTopicExportOpen);
+  const [historyDropdownOpen, setHistoryDropdownOpen] = useState(false);
+  const [historyDropdownSessions, setHistoryDropdownSessions] = useState<SessionMeta[]>([]);
+  const [historyDropdownMode, setHistoryDropdownMode] = useState<"sessions" | "trash">("sessions");
   const sidebarSearchOpen = useOverlayStore((s) => s.sidebarSearchOpen);
   const setSidebarSearchOpen = useOverlayStore((s) => s.setSidebarSearchOpen);
   const sidebarSearchFocusSignal = useOverlayStore((s) => s.sidebarSearchFocusSignal);
@@ -1569,6 +1574,16 @@ export default function App() {
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [topicExportOpen]);
+
+  useEffect(() => {
+    if (!historyDropdownOpen) return;
+    const onDown = (event: MouseEvent) => {
+      const target = event.target as Element | null;
+      if (!target?.closest(".topicbar__history-dropdown")) setHistoryDropdownOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [historyDropdownOpen]);
 
   const exportSession = useCallback(
     async (format: "markdown" | "json" | "pdf" | "image") => {
@@ -3270,22 +3285,105 @@ export default function App() {
                   <SquarePen size={14} />
                 </button>
               </Tooltip>
-              <Tooltip label={t("topicBar.projectHistory")}>
-                <button
-                  className="topicbar__action-btn topicbar__action-btn--icon"
-                  type="button"
-                  aria-label={t("topicBar.projectHistory")}
-                  onClick={() => {
-                    if (activeTab?.scope === "project" && activeTab?.workspaceRoot) {
-                      void openProjectHistory("project", activeTab.workspaceRoot);
-                    } else {
-                      void openAllHistory();
-                    }
-                  }}
-                >
-                  <History size={14} />
-                </button>
-              </Tooltip>
+              <div className={`topicbar__history-dropdown${historyDropdownOpen ? " topicbar__history-dropdown--open" : ""}`}>
+                <Tooltip label={t("topicBar.projectHistory")}>
+                  <button
+                    className="topicbar__action-btn topicbar__action-btn--icon"
+                    type="button"
+                    aria-label={t("topicBar.projectHistory")}
+                    aria-haspopup="menu"
+                    aria-expanded={historyDropdownOpen}
+                    onClick={() => {
+                      closeTransientOverlays();
+                      setTopicExportOpen(false);
+                      setHistoryDropdownMode("sessions");
+                      const loadAndShow = async () => {
+                        const all = await listSessions();
+                        if (activeTab?.scope === "project" && activeTab?.workspaceRoot) {
+                          const filtered = all.filter((s) => (s.scope || "global") === "project" && s.workspaceRoot === activeTab.workspaceRoot);
+                          setHistoryDropdownSessions(filtered);
+                        } else {
+                          setHistoryDropdownSessions(all);
+                        }
+                        setHistoryDropdownOpen((open) => !open);
+                      };
+                      void loadAndShow();
+                    }}
+                  >
+                    <History size={14} />
+                  </button>
+                </Tooltip>
+                {historyDropdownOpen && (
+                  <div className="topicbar__overflow-menu-dropdown topicbar__history-dropdown-menu" role="menu">
+                    {historyDropdownSessions.length === 0 ? (
+                      <div className="topicbar__history-empty" role="menuitem">{t("history.empty")}</div>
+                    ) : (
+                      historyDropdownSessions.slice(0, 12).map((session) => (
+                        <div key={session.path} className="topicbar__history-session" role="menuitem">
+                          <button
+                            type="button"
+                            className="topicbar__history-session-main"
+                            onClick={() => {
+                              setHistoryDropdownOpen(false);
+                              void onResumeSession(session);
+                            }}
+                          >
+                            <span className="topicbar__history-session-title">
+                              {historySessionDisplayTitle(session, t("history.emptySession"))}
+                            </span>
+                            <span className="topicbar__history-session-end">
+                              <span className="topicbar__history-session-turns">{session.turns}t</span>
+                              <span
+                                className="topicbar__history-session-action"
+                                title={historyDropdownMode === "trash" ? t("history.restoreSession") : t("history.moveToTrash")}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (historyDropdownMode === "trash") {
+                                    try { await restoreSession(session.path); setHistoryDropdownSessions((cur) => cur.filter((s) => s.path !== session.path)); } catch {}
+                                  } else {
+                                    if (state.running) return;
+                                    try { await deleteSession(session.path); setHistoryDropdownSessions((cur) => cur.filter((s) => s.path !== session.path)); } catch {}
+                                  }
+                                }}
+                              >
+                                {historyDropdownMode === "trash" ? <RotateCcw size={12} /> : <Archive size={12} />}
+                              </span>
+                            </span>
+                          </button>
+                        </div>
+                      ))
+                    )}
+                    <div className="topicbar__overflow-menu-separator" role="separator" />
+                    {historyDropdownMode === "trash" ? (
+                      <button type="button" role="menuitem" onClick={async () => {
+                        const all = await listSessions();
+                        if (activeTab?.scope === "project" && activeTab?.workspaceRoot) {
+                          setHistoryDropdownSessions(all.filter((s) => (s.scope || "global") === "project" && s.workspaceRoot === activeTab.workspaceRoot));
+                        } else {
+                          setHistoryDropdownSessions(all);
+                        }
+                        setHistoryDropdownMode("sessions");
+                      }}>
+                        <History size={13} />
+                        <span>{t("topicBar.projectHistory")}</span>
+                      </button>
+                    ) : (
+                      <button type="button" role="menuitem" onClick={async () => {
+                        const trashed = await listTrashedSessions();
+                        if (activeTab?.scope === "project" && activeTab?.workspaceRoot) {
+                          setHistoryDropdownSessions(trashed.filter((s) => (s.scope || "global") === "project" && s.workspaceRoot === activeTab.workspaceRoot));
+                        } else {
+                          setHistoryDropdownSessions(trashed);
+                        }
+                        setHistoryDropdownMode("trash");
+                      }}>
+                        <Trash2 size={13} />
+                        <span>{t("sidebar.trash")}</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
               <div className={`topicbar__overflow-menu${topicExportOpen ? " topicbar__overflow-menu--open" : ""}`}>
                 <Tooltip label={t("topicBar.more")}>
                   <button
