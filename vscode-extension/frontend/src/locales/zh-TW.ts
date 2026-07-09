@@ -1469,6 +1469,8 @@ export const zhTW: Record<DictKey, string> = {
   "topicBar.command": "命令",
   "topicBar.exportPdf": "匯出 PDF",
   "topicBar.exportImage": "匯出圖片",
+  "topicBar.newSession": "新增會話",
+  "topicBar.projectHistory": "專案歷史",
   "workspace.filterReferencedFiles": "篩選依賴檔案…",
   "workspace.clearFileScope": "顯示完整檔案樹",
   "workspace.clearChangeScope": "顯示全部改動",

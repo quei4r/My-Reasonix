@@ -52,11 +52,19 @@ export function activate(context: vscode.ExtensionContext) {
 	const port = DEFAULT_PORT;
 	const binaryPath = findBinary(context.extensionPath);
 
+	// Use the VSCode workspace folder as the backend's working directory so that
+	// file operations resolve to the project the user opened, not the extension
+	// host's default (e.g. ~ in WSL Remote).
+	const wsFolders = vscode.workspace.workspaceFolders;
+	const workspaceRoot = wsFolders && wsFolders.length > 0 ? wsFolders[0].uri.fsPath : undefined;
+
 	// Start the Go backend
 	backendProcess = spawn(binaryPath, [], {
+		cwd: workspaceRoot,
 		env: {
 			...process.env,
 			MY_REASONIX_ADDR: `127.0.0.1:${port}`,
+			REASONIX_MODE: "vscode",
 		},
 		stdio: ["ignore", "pipe", "pipe"],
 	});
@@ -73,12 +81,32 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	// Wait for backend to start, then register the webview provider
+	// Helper: tell the backend which folder VSCode has open.
+	function setWorkspaceRoot(p: number, path: string | undefined) {
+		if (!path) return;
+		fetch(`http://127.0.0.1:${p}/api/call/SetVSCodeWorkspaceRoot`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify([path]),
+		}).then(() => console.log("[my-reasonix] workspace root set to", path))
+		.catch((e) => console.error("[my-reasonix] failed to set workspace root", e));
+	}
+
 	waitForHealth(port)
-		.then(() => {
+		.then(async () => {
+			// After backend starts, set workspace root to match VSCode current folder.
+			const ws = vscode.workspace.workspaceFolders;
+			setWorkspaceRoot(port, ws && ws.length > 0 ? ws[0].uri.fsPath : undefined);
+
+			// Also re-apply when workspace folders change (open/close a folder).
+			context.subscriptions.push(
+				vscode.workspace.onDidChangeWorkspaceFolders(() => {
+					const f = vscode.workspace.workspaceFolders;
+					setWorkspaceRoot(port, f && f.length > 0 ? f[0].uri.fsPath : undefined);
+				}),
+			);
+
 			console.log("[my-reasonix] ready");
-		})
-		.catch((err) => {
-			void vscode.window.showErrorMessage(`My Reasonix backend failed: ${err.message}`);
 		});
 
 	// Register the sidebar webview provider

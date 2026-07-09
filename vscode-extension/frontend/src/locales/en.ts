@@ -152,6 +152,8 @@ export const en = {
   "topicBar.exportJson": "Export JSON",
   "topicBar.exportPdf": "Export PDF",
   "topicBar.exportImage": "Export Image",
+  "topicBar.newSession": "New session",
+  "topicBar.projectHistory": "Project history",
 
   // scope labels
   "scope.global": "Scope: Global",

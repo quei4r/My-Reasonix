@@ -9,6 +9,7 @@ declare module "child_process" {
 		on(event: "exit", cb: (code: number | null) => void): this;
 	}
 	interface SpawnOptions {
+		cwd?: string | URL;
 		env?: Record<string, string | undefined>;
 		stdio?: Array<"ignore" | "pipe" | "inherit">;
 	}

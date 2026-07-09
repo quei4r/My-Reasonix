@@ -3260,7 +3260,32 @@ export default function App() {
             </div>
             <div className="topicbar__spacer" />
             <div className="topicbar__actions">
-              {/* VSCode extension: collapsed into ··· menu */}
+              <Tooltip label={t("topicBar.newSession")}>
+                <button
+                  className="topicbar__action-btn topicbar__action-btn--icon"
+                  type="button"
+                  aria-label={t("topicBar.newSession")}
+                  onClick={() => void handleNewTab()}
+                >
+                  <SquarePen size={14} />
+                </button>
+              </Tooltip>
+              <Tooltip label={t("topicBar.projectHistory")}>
+                <button
+                  className="topicbar__action-btn topicbar__action-btn--icon"
+                  type="button"
+                  aria-label={t("topicBar.projectHistory")}
+                  onClick={() => {
+                    if (activeTab?.scope === "project" && activeTab?.workspaceRoot) {
+                      void openProjectHistory("project", activeTab.workspaceRoot);
+                    } else {
+                      void openAllHistory();
+                    }
+                  }}
+                >
+                  <History size={14} />
+                </button>
+              </Tooltip>
               <div className={`topicbar__overflow-menu${topicExportOpen ? " topicbar__overflow-menu--open" : ""}`}>
                 <Tooltip label={t("topicBar.more")}>
                   <button
