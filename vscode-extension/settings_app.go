@@ -1113,7 +1113,12 @@ func (a *App) applyConfigOnly(mutate func(*config.Config) error) error {
 	if err := mutate(cfg); err != nil {
 		return err
 	}
-	return cfg.SaveTo(path)
+	if err := cfg.SaveTo(path); err != nil {
+		return err
+	}
+	// Notify all webviews (sidebar + settings editor tab) that settings changed.
+	a.runtimeEvents.Emit(a.ctx, "settings:changed")
+	return nil
 }
 
 func (a *App) ensureActiveTabRebuildAllowed(setting string) error {

@@ -711,6 +711,16 @@ export function onSessionRecoveryFailed(cb: (payload: SessionRecoveryFailedEvent
   return () => {};
 }
 
+export function onSettingsChanged(cb: () => void): () => void {
+  if (isHttpMode()) {
+    return subscribeSSE("settings:changed", () => cb());
+  }
+  if (realApp() && typeof window !== "undefined" && window.runtime) {
+    return window.runtime.EventsOn("settings:changed", () => cb());
+  }
+  return () => {};
+}
+
 // app proxies each call to the live binding (or the dev mock only when truly
 // outside the shell), so a late-injected window.go is picked up transparently.
 function bridgeBreadcrumb(method: string): string {

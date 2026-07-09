@@ -19404,6 +19404,11 @@ body > .mermaid-diagram--fullscreen {
   padding: 0;
 }
 
+.topicbar__action-btn[aria-pressed="true"] {
+  color: var(--fg);
+  background: var(--button-bg);
+}
+
 .topicbar__action-btn--accent {
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 24%, var(--border));
@@ -19599,6 +19604,38 @@ body > .mermaid-diagram--fullscreen {
   color: var(--text-muted);
   font-size: 12.5px;
   text-align: center;
+}
+
+/* Settings as full chat-pane (not modal overlay) */
+/* Standalone settings view in VSCode editor tab (?panel=settings) */
+.settings-standalone {
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.settings-standalone .management-modal-backdrop {
+  position: static;
+  background: none;
+  padding: 0;
+  height: 100%;
+  align-items: stretch;
+}
+
+.settings-standalone .management-modal {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  width: 100%;
+  height: 100%;
+}
+
+.settings-standalone .settings-modal__head {
+  display: none;
+}
+
+.settings-standalone .settings-center {
+  height: 100%;
 }
 
 .topicbar__icon-btn {

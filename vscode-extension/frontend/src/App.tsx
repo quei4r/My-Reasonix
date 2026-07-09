@@ -40,7 +40,7 @@ import { useWailsResizeFix } from "./lib/useWailsResizeFix";
 import { asArray } from "./lib/array";
 import { clearLegacyLangPref, normalizeLangPref, readLegacyLangPref, useI18n, useT, type Translator } from "./lib/i18n";
 import { useController, type Item, type LiveStream } from "./lib/useController";
-import { app, onEvent, onProjectTreeChanged, onSessionRecovered, onSessionRecoveryFailed } from "./lib/bridge";
+import { app, onEvent, onProjectTreeChanged, onSessionRecovered, onSessionRecoveryFailed, onSettingsChanged } from "./lib/bridge";
 import { generativeMusic, isGenerativeMusicEnabled } from "./lib/generative-music";
 import { playSuccessChime } from "./lib/sound";
 import { Transcript } from "./components/Transcript";
@@ -902,7 +902,50 @@ function TextSizeHotkeys() {
   return null;
 }
 
+/** Standalone settings view opened in VSCode editor tab via ?panel=settings */
+function SettingsStandaloneView() {
+  useEffect(() => {
+    // Apply current config (theme/layout) on mount so the tab matches the persisted settings.
+    import("./lib/bridge").then(({ app }) =>
+      app.DesktopStartupSettings().then((settings: any) => {
+        if (!settings) return;
+        import("./lib/theme").then(({ applyTheme, normalizeThemePreference, normalizeThemeStyleForTheme }) => {
+          const nextTheme = normalizeThemePreference(settings.desktopTheme);
+          const nextStyle = normalizeThemeStyleForTheme(settings.desktopThemeStyle, nextTheme);
+          applyTheme(nextTheme, nextStyle, { persist: false });
+        });
+      }).catch(() => {}),
+    );
+  }, []);
+
+  return (
+    <div className="settings-standalone">
+      <Suspense fallback={null}>
+        <SettingsPanel
+          initialTab="general"
+          agentRunning={false}
+          desktopPlatform="linux"
+          onClose={() => { /* tab will be closed by user */ }}
+          onChanged={(settings) => {
+            if (!settings) return;
+            import("./lib/theme").then(({ applyTheme, normalizeThemePreference, normalizeThemeStyleForTheme }) => {
+              const nextTheme = normalizeThemePreference(settings.desktopTheme);
+              const nextStyle = normalizeThemeStyleForTheme(settings.desktopThemeStyle, nextTheme);
+              applyTheme(nextTheme, nextStyle, { persist: false });
+            });
+          }}
+        />
+      </Suspense>
+    </div>
+  );
+}
+
 export default function App() {
+  // Standalone settings panel in VSCode editor tab (?panel=settings)
+  if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("panel") === "settings") {
+    return <SettingsStandaloneView />;
+  }
+
   const {
     state,
     activeTabId,
@@ -1022,6 +1065,8 @@ export default function App() {
     });
     return unsub;
   }, []);
+
+  // Run the ambient engine only while the agent is generating.
 
   const [workspacePanelResizing, setWorkspacePanelResizing] = useState(false);
   const [liveWorkspacePanelRenderWidth, setLiveWorkspacePanelRenderWidth] = useState<number | null>(null);
@@ -1182,6 +1227,17 @@ export default function App() {
     },
     [setLocalePref],
   );
+
+  // Refresh sidebar state when settings are saved (e.g. from the settings editor tab).
+  useEffect(() => {
+    return onSettingsChanged(() => {
+      setDockRefreshKey((v) => v + 1);
+      setProjectRevision((v) => v + 1);
+      void app.DesktopStartupSettings().then((settings) => {
+        if (settings) applyDesktopPreferences(settings);
+      }).catch(() => {});
+    });
+  }, [applyDesktopPreferences]);
 
   useEffect(() => {
     let cancelled = false;
@@ -3384,6 +3440,20 @@ export default function App() {
                   </div>
                 )}
               </div>
+              <Tooltip label={t("settings.title")}>
+                <button
+                  className="topicbar__action-btn topicbar__action-btn--icon"
+                  type="button"
+                  aria-label={t("settings.title")}
+                  onClick={() => {
+                    closeTransientOverlays();
+                    setTopicExportOpen(false);
+                    try { window.parent.postMessage({ command: "openSettings" }, "*"); } catch {}
+                  }}
+                >
+                  <SettingsIcon size={14} />
+                </button>
+              </Tooltip>
               <div className={`topicbar__overflow-menu${topicExportOpen ? " topicbar__overflow-menu--open" : ""}`}>
                 <Tooltip label={t("topicBar.more")}>
                   <button

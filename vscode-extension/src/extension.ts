@@ -154,7 +154,38 @@ export function activate(context: vscode.ExtensionContext) {
 			console.log("[my-reasonix] ready");
 		});
 
-	// Register the sidebar webview provider
+	// Helper: open a webview panel in the editor area for settings.
+	let settingsPanel: vscode.WebviewPanel | undefined;
+	function openSettingsPanel() {
+		if (settingsPanel) {
+			settingsPanel.reveal();
+			return;
+		}
+		settingsPanel = vscode.window.createWebviewPanel(
+			"reasonix.settings",
+			"My Reasonix Settings",
+			vscode.ViewColumn.One,
+			{ enableScripts: true, retainContextWhenHidden: true },
+		);
+		settingsPanel.webview.html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<style>
+		* { margin: 0; padding: 0; box-sizing: border-box; }
+		html, body { width: 100%; height: 100%; overflow: hidden; background: #1e1e1e; }
+		iframe { width: 100%; height: 100%; border: none; }
+	</style>
+</head>
+<body>
+	<iframe src="http://127.0.0.1:${port}/?panel=settings" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+</body>
+</html>`;
+		settingsPanel.onDidDispose(() => { settingsPanel = undefined; });
+	}
+
+	// Register the sidebar webview provider + message bridge
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider("reasonix.sidebarPanel", {
 			resolveWebviewView(webviewView) {
@@ -173,9 +204,21 @@ export function activate(context: vscode.ExtensionContext) {
 	</style>
 </head>
 <body>
-	<iframe src="http://127.0.0.1:${port}" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+	<iframe id="app" src="http://127.0.0.1:${port}" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+	<script>
+		const iframe = document.getElementById("app");
+		const vscode = acquireVsCodeApi();
+		window.addEventListener("message", (e) => {
+			if (e.source === iframe.contentWindow) {
+				vscode.postMessage(e.data);
+			}
+		});
+	</script>
 </body>
 </html>`;
+				webviewView.webview.onDidReceiveMessage((msg) => {
+					if (msg.command === "openSettings") openSettingsPanel();
+				});
 			},
 		}),
 	);

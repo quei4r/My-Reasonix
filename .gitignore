@@ -38,6 +38,11 @@ mem.prof
 /desktop/.env
 /desktop/reasonix.toml
 
+# Stray lock files / runtime data
+package-lock.json
+vscode-extension/pnpm-lock.yaml
+vscode-extension/.reasonix/
+
 # Node / frontend dependencies and caches
 node_modules/
 .pnpm-store/
