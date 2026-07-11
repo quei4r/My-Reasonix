@@ -6,8 +6,7 @@
       "type": "extensionHost",
       "request": "launch",
       "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}/vscode-extension",
-        "/home/quei/code/tools/My-Reasonix"
+        "--extensionDevelopmentPath=${workspaceFolder}/vscode-extension"
       ],
       "outFiles": [
         "${workspaceFolder}/vscode-extension/out/**/*.js"
