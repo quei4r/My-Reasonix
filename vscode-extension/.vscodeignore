@@ -10,6 +10,7 @@ frontend/tsconfig.*.json
 frontend/vite.config.ts
 frontend/scripts/**
 frontend/public/**
+frontend/sourcemaps/**
 frontend/pnpm-lock.yaml
 frontend/.npmrc
 *.test.go
