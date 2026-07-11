@@ -8687,6 +8687,7 @@ func (a *App) SetVSCodeWorkspaceRoot(wsRoot string) error {
 		if tab.Scope == "project" && sameDesktopPath(tab.WorkspaceRoot, wsRoot) {
 			a.activeTabID = tab.ID
 			a.mu.Unlock()
+			a.emitProjectTreeChanged()
 			return nil
 		}
 	}
@@ -8707,6 +8708,7 @@ func (a *App) SetVSCodeWorkspaceRoot(wsRoot string) error {
 	a.activeTabID = tab.ID
 	a.mu.Unlock()
 	a.startTabControllerBuild(tab)
+	a.emitProjectTreeChanged()
 	return nil
 }
 

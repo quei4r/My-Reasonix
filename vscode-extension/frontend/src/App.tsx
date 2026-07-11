@@ -1810,9 +1810,14 @@ export default function App() {
   useEffect(() => {
     return onProjectTreeChanged(() => {
       setProjectRevision((value) => value + 1);
-      void refreshTabMetas();
+      void refreshTabMetas().then((tabs) => {
+        const backendActive = tabs.find((tab) => tab.active);
+        if (backendActive && backendActive.id !== activeTabId) {
+          void syncActiveTab(false);
+        }
+      });
     });
-  }, [refreshTabMetas]);
+  }, [refreshTabMetas, syncActiveTab, activeTabId]);
 
   useEffect(() => {
     let cancelled = false;
