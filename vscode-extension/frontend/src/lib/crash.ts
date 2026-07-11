@@ -627,7 +627,6 @@ function maybePromptForHeapPressure(): void {
 
 export function installPerformancePressureMonitor() {
   if (performanceMonitorInstalled || typeof window === "undefined" || typeof performance === "undefined") return;
-  if (!window.runtime) return;
   performanceMonitorInstalled = true;
   const startedAt = performance.now();
   const graceUntil = startedAt + STARTUP_GRACE_MS;

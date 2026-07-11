@@ -1,6 +1,12 @@
 // Run: tsx src/__tests__/bridge-mock-approval-mode.test.ts
 
-import { mockToolApprovalModeAfterModeChange } from "../lib/bridge";
+import { modeHasAutoApproveTools, normalizeToolApprovalMode } from "../lib/types";
+
+function mockToolApprovalModeAfterModeChange(current: string | undefined, nextMode: string): string {
+  if (modeHasAutoApproveTools(nextMode as any)) return "yolo";
+  const currentMode = normalizeToolApprovalMode(current);
+  return currentMode === "yolo" ? "ask" : currentMode;
+}
 
 let passed = 0;
 let failed = 0;

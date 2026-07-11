@@ -40,7 +40,6 @@ const STYLE_KEY = "reasonix-theme-style";
 const AUTO_THEME_MEDIA_QUERY = "(prefers-color-scheme: light)";
 let currentTheme: Theme = DEFAULT_THEME;
 let currentThemeStyle: ThemeStyle = DEFAULT_THEME_STYLE;
-let autoThemeMediaQuery: MediaQueryList | null = null;
 
 export function normalizeThemePreference(value: unknown): Theme {
   if (typeof value === "object" && value !== null) {
@@ -112,51 +111,7 @@ export function applyTheme(theme: Theme, style: ThemeStyle = getThemeStyle(theme
   currentThemeStyle = nextStyle;
   root.setAttribute("data-theme-style", nextStyle);
 
-  // Sync the native window theme (title bar, traffic lights) to match.
-  const runtime = typeof window !== "undefined" ? window.runtime : undefined;
-  if (runtime) {
-    syncAutoThemeBackgroundListener(theme);
-    if (theme === "auto") {
-      runtime.WindowSetSystemDefaultTheme?.();
-    } else if (theme === "light") {
-      runtime.WindowSetLightTheme?.();
-    } else if (theme === "dark") {
-      runtime.WindowSetDarkTheme?.();
-    }
-    syncNativeWindowBackground(theme);
-  }
-
   void options;
-}
-
-function syncAutoThemeBackgroundListener(theme: Theme): void {
-  if (theme !== "auto") {
-    clearAutoThemeBackgroundListener();
-    return;
-  }
-  if (autoThemeMediaQuery || typeof window === "undefined" || !window.matchMedia) return;
-  autoThemeMediaQuery = window.matchMedia(AUTO_THEME_MEDIA_QUERY);
-  if (typeof autoThemeMediaQuery.addEventListener === "function") {
-    autoThemeMediaQuery.addEventListener("change", syncAutoThemeBackground);
-  } else {
-    autoThemeMediaQuery.addListener(syncAutoThemeBackground);
-  }
-}
-
-function clearAutoThemeBackgroundListener(): void {
-  if (!autoThemeMediaQuery) return;
-  if (typeof autoThemeMediaQuery.removeEventListener === "function") {
-    autoThemeMediaQuery.removeEventListener("change", syncAutoThemeBackground);
-  } else {
-    autoThemeMediaQuery.removeListener(syncAutoThemeBackground);
-  }
-  autoThemeMediaQuery = null;
-}
-
-function syncAutoThemeBackground(): void {
-  if (currentTheme === "auto" && typeof window !== "undefined" && window.runtime) {
-    syncNativeWindowBackground("auto");
-  }
 }
 
 export function readLegacyThemePreference(): { theme: Theme; style: ThemeStyle; hasValue: boolean } {
@@ -191,23 +146,8 @@ export function clearLegacyThemePreference(): void {
   }
 }
 
-// initTheme runs before React mounts. It applies the saved theme to the DOM and
-// sets the native window background colour to match the resolved theme, avoiding
-// a white (or wrong-colour) flash while the webview paints its first frame.
+// initTheme runs before React mounts. It applies the saved theme to the DOM.
 export function initTheme(): void {
   const theme = getTheme();
   applyTheme(theme, getThemeStyle(theme), { persist: false });
-}
-
-function syncNativeWindowBackground(theme: Theme): void {
-  const runtime = typeof window !== "undefined" ? window.runtime : undefined;
-  if (!runtime?.WindowSetBackgroundColour) return;
-  const resolved = getResolvedTheme(theme);
-  if (resolved === "light") {
-    // Light shell: matches graphite --bg (#f4f3ef).
-    runtime.WindowSetBackgroundColour(244, 243, 239, 255);
-  } else {
-    // Dark shell: matches :root --bg (#090a0c).
-    runtime.WindowSetBackgroundColour(9, 10, 12, 255);
-  }
 }

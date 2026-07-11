@@ -526,10 +526,6 @@ func (a *App) showMainWindow() {
 	}
 }
 
-func (a *App) secondInstanceLaunch() {
-	a.showMainWindow()
-}
-
 func (a *App) quitApp() {
 	if a.ctx == nil {
 		return

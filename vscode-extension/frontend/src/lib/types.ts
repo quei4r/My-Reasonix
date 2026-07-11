@@ -1233,35 +1233,3 @@ export interface DesktopStartupSettingsView {
   statusBarItems: string[]; // ordered visible status bar item ids
   checkUpdates: boolean; // check for new versions on startup
 }
-
-// Auto-updater payloads (desktop/updater.go). UpdateInfo drives the update banner;
-// UpdateProgress streams on the "updater:progress" event during download/install.
-export interface UpdateInfo {
-  available: boolean;
-  current: string;
-  latest: string;
-  notes: string;
-  channel: string;
-  canSelfUpdate: boolean; // macOS true only for signed/notarized builds
-  manualOnly?: boolean;
-  manualReason?: string;
-  downloaded: boolean;
-  downloadUrl: string; // human-facing releases page (macOS path / fallback link)
-  assetSize: number; // running platform's artifact size, for the progress bar
-  err?: string; // set when the check itself failed (both endpoints down)
-}
-
-export interface UpdateDownloadResult {
-  version: string;
-  channel: string;
-  path: string;
-  size: number;
-  sha256: string;
-}
-
-export interface UpdateProgress {
-  phase: "downloading" | "verifying" | "downloaded" | "installing" | "done" | "error";
-  received: number;
-  total: number;
-  err?: string;
-}

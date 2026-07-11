@@ -1,11 +1,10 @@
 import { lazy, memo, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent, type ReactNode } from "react";
-import { Bot as BotIcon, Check, CheckCircle2, ChevronDown, ChevronUp, Clipboard, GripVertical, KeyRound, Loader2, MessageCircle, Minus, Play, Plus, QrCode, RefreshCw, RotateCcw, Send } from "lucide-react";
+import { Bot as BotIcon, Check, CheckCircle2, ChevronDown, ChevronUp, Clipboard, GripVertical, KeyRound, Loader2, MessageCircle, Play, QrCode, RefreshCw, Send } from "lucide-react";
 import { asArray } from "../lib/array";
 import { useDeferredClose } from "../lib/useMountTransition";
 import { app } from "../lib/bridge";
 import { normalizeLangPref, useI18n, useT, type DictKey, type LangPref } from "../lib/i18n";
 import { apiKeyEnvFromProviderName, inferredVisionModels, mergedFetchedProviderModels, providerApiKeyEnvForSave, providerDefaultModel, providerIsConfigured, providerModelCandidates, providerRequiresKey } from "../lib/providerModels";
-import { useUpdater } from "../lib/useUpdater";
 import {
   THEME_STYLES,
   applyTheme,
@@ -17,7 +16,6 @@ import {
   type ThemeStyle,
 } from "../lib/theme";
 import { TEXT_SIZES, applyTextSize, getTextSize, type TextSize } from "../lib/textSize";
-import { DEFAULT_ZOOM, MAX_ZOOM, MIN_ZOOM, ZOOM_STEP, snapZoom, zoomToPercent, saveRestartZoom, getRestartZoom, type ZoomLevel } from "../lib/dpiScale";
 import {
   applyFontFamily,
   applyMonoFontFamily,
@@ -58,7 +56,6 @@ import { ShortcutComboDisplay } from "./ShortcutComboDisplay";
 
 const SETTINGS_TABS: SettingsTab[] = ["general", "models", "bots", "mcp", "skills", "plugins", "memory", "hooks", "shortcuts", "permissions", "sandbox", "network", "appearance", "updates"];
 export type SettingsInitialFocus = { target: "bot-allowlist"; connectionId?: string };
-type DesktopPlatform = "darwin" | "windows" | "linux";
 
 const MCPServersSettingsPage = lazy(() => import("./CapabilitiesPanel").then((module) => ({ default: module.MCPServersSettingsPage })));
 const SkillsSettingsPage = lazy(() => import("./CapabilitiesPanel").then((module) => ({ default: module.SkillsSettingsPage })));
@@ -75,14 +72,12 @@ export function SettingsPanel({
   initialTab,
   initialFocus,
   agentRunning = false,
-  desktopPlatform,
 }: {
   onClose: () => void;
   onChanged: (settings?: SettingsView | null) => void;
   initialTab?: SettingsTab;
   initialFocus?: SettingsInitialFocus;
   agentRunning?: boolean;
-  desktopPlatform: DesktopPlatform;
 }) {
   const t = useT();
   const [s, setS] = useState<SettingsView | null>(null);
@@ -94,7 +89,6 @@ export function SettingsPanel({
   const [theme, setThemeState] = useState<Theme>(getTheme());
   const [themeStyle, setThemeStyleState] = useState<ThemeStyle>(() => getThemeStyle(getTheme()));
   const [textSize, setTextSizeState] = useState<TextSize>(getTextSize());
-  const [zoomPct, setZoomPct] = useState<number>(zoomToPercent(getRestartZoom()));
   const [fontFamily, setFontFamilyState] = useState<FontFamily>(getFontFamily());
   const [monoFontFamily, setMonoFontFamilyState] = useState<MonoFontFamily>(getMonoFontFamily());
   const [customFontName, setCustomFontNameState] = useState<string>(getCustomFontName());
@@ -102,7 +96,6 @@ export function SettingsPanel({
   const [tab, setTab] = useState<SettingsTab>(initialTab === "providers" ? "models" : initialTab ?? "general");
   // Play the modal exit animation, then let the parent unmount us.
   const { status, requestClose } = useDeferredClose(onClose, 240);
-  const zoomSaveSeq = useRef(0);
 
   const reload = useCallback(async () => {
     setLoadingSettings(true);
@@ -130,24 +123,6 @@ export function SettingsPanel({
     setThemeState(nextTheme);
     setThemeStyleState(nextStyle);
   }, [s?.desktopTheme, s?.desktopThemeStyle]);
-  useEffect(() => {
-    if (desktopPlatform !== "windows") return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const persisted = await app.GetDesktopZoomFactor();
-        if (cancelled || typeof persisted !== "number" || !Number.isFinite(persisted)) return;
-        const snapped = snapZoom(persisted);
-        saveRestartZoom(snapped);
-        setZoomPct(zoomToPercent(snapped));
-      } catch {
-        // Older mocks or startup races can lack the binding; keep the local fallback.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [desktopPlatform]);
 
   // apply runs a mutation, re-reads settings, and refreshes the topbar/model.
   const apply = useCallback(async (fn: () => Promise<unknown>) => {
@@ -178,21 +153,6 @@ export function SettingsPanel({
       setErr(formatSettingsError(e, t));
     }
   }, [reload, onChanged, t]);
-  const setRestartZoom = useCallback(async (zoom: ZoomLevel) => {
-    const snapped = snapZoom(zoom);
-    const seq = ++zoomSaveSeq.current;
-    setErr(null);
-    setWarning(null);
-    setZoomPct(zoomToPercent(snapped));
-    try {
-      await app.SetDesktopZoomFactor(snapped);
-      if (seq === zoomSaveSeq.current) saveRestartZoom(snapped);
-    } catch (e) {
-      if (seq !== zoomSaveSeq.current) return;
-      setErr(formatSettingsError(e, t));
-      setZoomPct(zoomToPercent(getRestartZoom()));
-    }
-  }, [t]);
 
   // Close on Esc
   useEffect(() => {
@@ -262,8 +222,6 @@ export function SettingsPanel({
                       theme={theme}
                       themeStyle={themeStyle}
                       textSize={textSize}
-                      showDisplayZoom={desktopPlatform === "windows"}
-                      zoomPct={zoomPct}
                       fontFamily={fontFamily}
                       monoFontFamily={monoFontFamily}
                       customFontName={customFontName}
@@ -282,7 +240,6 @@ export function SettingsPanel({
                         applyTextSize(size);
                         setTextSizeState(size);
                       }}
-                      onRestartZoom={setRestartZoom}
                       onFontFamily={(font) => {
                         applyFontFamily(font);
                         setFontFamilyState(font);
@@ -301,18 +258,6 @@ export function SettingsPanel({
                         setCustomMonoFontName(name);
                         applyMonoFontFamily("custom");
                       }}
-                    />
-                  </SettingsPageShell>
-                )}
-                {tab === "updates" && s && (
-                  <SettingsPageShell key={tab} s={s} tab={tab} busy={busy} apply={apply}>
-                    <UpdatesSection
-                      configPath={s.configPath}
-                      checkUpdates={s.checkUpdates}
-                      telemetry={s.telemetry !== false}
-                      metrics={s.metrics !== false}
-                      settingsBusy={busy}
-                      applySettings={apply}
                     />
                   </SettingsPageShell>
                 )}
@@ -6616,8 +6561,6 @@ function AppearanceSection({
   theme,
   themeStyle,
   textSize,
-  showDisplayZoom,
-  zoomPct,
   fontFamily,
   monoFontFamily,
   customFontName,
@@ -6625,7 +6568,6 @@ function AppearanceSection({
   onTheme,
   onThemeStyle,
   onTextSize,
-  onRestartZoom,
   onFontFamily,
   onMonoFontFamily,
   onCustomFontNameChange,
@@ -6634,8 +6576,6 @@ function AppearanceSection({
   theme: Theme;
   themeStyle: ThemeStyle;
   textSize: TextSize;
-  showDisplayZoom: boolean;
-  zoomPct: number;
   fontFamily: FontFamily;
   monoFontFamily: MonoFontFamily;
   customFontName: string;
@@ -6643,7 +6583,6 @@ function AppearanceSection({
   onTheme: (t: Theme) => void;
   onThemeStyle: (style: ThemeStyle) => void;
   onTextSize: (size: TextSize) => void;
-  onRestartZoom: (zoom: ZoomLevel) => Promise<void>;
   onFontFamily: (font: FontFamily) => void;
   onMonoFontFamily: (font: MonoFontFamily) => void;
   onCustomFontNameChange: (name: string) => void;
@@ -6653,15 +6592,6 @@ function AppearanceSection({
   const themeOptions: Theme[] = ["auto", "light", "dark"];
   const availableFontFamilies = useMemo(() => getAvailableFontFamilies(fontFamily), [fontFamily]);
   const availableMonoFontFamilies = useMemo(() => getAvailableMonoFontFamilies(monoFontFamily), [monoFontFamily]);
-  const zoomMinPct = zoomToPercent(MIN_ZOOM);
-  const zoomMaxPct = zoomToPercent(MAX_ZOOM);
-  const zoomStepPct = Math.round(ZOOM_STEP * 100);
-  const zoomProgressPct = Math.min(100, Math.max(0, ((zoomPct - zoomMinPct) / (zoomMaxPct - zoomMinPct)) * 100));
-  const canDecreaseZoom = zoomPct > zoomMinPct;
-  const canIncreaseZoom = zoomPct < zoomMaxPct;
-  const setZoomPercent = (pct: number) => {
-    void onRestartZoom(pct / 100);
-  };
   return (
     <SettingsSection title={t("settings.appearance")}>
       <SettingsField label={t("settings.theme")}>
@@ -6724,69 +6654,6 @@ function AppearanceSection({
           ))}
         </div>
       </SettingsField>
-      {showDisplayZoom && (
-        <SettingsField label={t("settings.displayZoom")}>
-          <div className="zoom-slider-wrap">
-            <div className="zoom-slider__head">
-              <div className="zoom-slider__value">{zoomPct}%</div>
-              <div className="zoom-stepper">
-                <button
-                  type="button"
-                  className="zoom-stepper__btn"
-                  aria-label={t("settings.displayZoomDecrease")}
-                  title={t("settings.displayZoomDecrease")}
-                  disabled={!canDecreaseZoom}
-                  onClick={() => setZoomPercent(zoomPct - zoomStepPct)}
-                >
-                  <Minus size={13} aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  className="zoom-stepper__reset"
-                  aria-label={t("settings.displayZoomReset")}
-                  title={t("settings.displayZoomReset")}
-                  disabled={zoomPct === zoomToPercent(DEFAULT_ZOOM)}
-                  onClick={() => { void onRestartZoom(DEFAULT_ZOOM); }}
-                >
-                  <RotateCcw size={12} aria-hidden="true" />
-                  <span>100%</span>
-                </button>
-                <button
-                  type="button"
-                  className="zoom-stepper__btn"
-                  aria-label={t("settings.displayZoomIncrease")}
-                  title={t("settings.displayZoomIncrease")}
-                  disabled={!canIncreaseZoom}
-                  onClick={() => setZoomPercent(zoomPct + zoomStepPct)}
-                >
-                  <Plus size={13} aria-hidden="true" />
-                </button>
-              </div>
-            </div>
-            <div className="zoom-slider-row">
-              <span className="zoom-slider__label">{zoomMinPct}%</span>
-              <div className="slider-track">
-                <div className="slider-track__bg" />
-                <div
-                  className="slider-track__fill"
-                  style={{ width: `calc(${zoomProgressPct}% + 15px)` }}
-                />
-                <div className="slider-thumb" style={{ left: `${zoomProgressPct}%` }} />
-                <input
-                  aria-label={t("settings.displayZoom")}
-                  type="range"
-                  min={zoomMinPct}
-                  max={zoomMaxPct}
-                  step={zoomStepPct}
-                  value={zoomPct}
-                  onChange={(e) => setZoomPercent(Number(e.target.value))}
-                />
-              </div>
-              <span className="zoom-slider__label">{zoomMaxPct}%</span>
-            </div>
-          </div>
-        </SettingsField>
-      )}
       <SettingsField label={t("settings.fontFamily")}>
         <div className="set-seg">
           {availableFontFamilies.map((font) => (
@@ -6897,117 +6764,4 @@ function monoFontFamilyName(font: MonoFontFamily, t: ReturnType<typeof useT>): s
   }
 }
 
-const MB = 1024 * 1024;
-const mb = (n: number) => (n / MB).toFixed(1);
 
-// UpdatesSection is the manual side of the auto-updater: it shows the startup
-// check preference, running version, and a Check button, then the same state
-// machine the top banner uses (useUpdater) — available → download → install, with
-// progress and errors inline.
-function UpdatesSection({
-  configPath,
-  checkUpdates,
-  telemetry,
-  metrics,
-  settingsBusy,
-  applySettings,
-}: {
-  configPath: string;
-  checkUpdates: boolean;
-  telemetry: boolean;
-  metrics: boolean;
-  settingsBusy: boolean;
-  applySettings: (fn: () => Promise<void>) => Promise<void>;
-}) {
-  const t = useT();
-  const { status, check, download: downloadUpdate, install: installUpdate } = useUpdater();
-  const [version, setVersion] = useState("");
-  useEffect(() => {
-    app.Version().then(setVersion).catch(() => {});
-  }, []);
-
-  const updaterBusy =
-    status.kind === "checking" || status.kind === "downloading" || status.kind === "verifying" || status.kind === "installing";
-
-  return (
-    <SettingsSection title={t("updater.title")}>
-      <SettingsField
-        className="settings-field--wide-copy"
-        label={t("updater.autoCheckLabel")}
-        hint={t("updater.autoCheckHint")}
-      >
-        <ToggleSegment
-          value={checkUpdates}
-          disabled={settingsBusy}
-          onChange={(enabled) => void applySettings(() => app.SetDesktopCheckUpdates(enabled))}
-        />
-      </SettingsField>
-      <SettingsField
-        className="settings-field--wide-copy"
-        label={t("settings.telemetryLabel")}
-        hint={t("settings.telemetryHint")}
-      >
-        <ToggleSegment
-          value={telemetry}
-          disabled={settingsBusy}
-          onChange={(enabled) => void applySettings(() => app.SetDesktopTelemetry(enabled))}
-        />
-      </SettingsField>
-      <SettingsField
-        className="settings-field--wide-copy"
-        label={t("settings.metricsLabel")}
-        hint={t("settings.metricsHint")}
-      >
-        <ToggleSegment
-          value={metrics}
-          disabled={settingsBusy}
-          onChange={(enabled) => void applySettings(() => app.SetDesktopMetrics(enabled))}
-        />
-      </SettingsField>
-      <SettingsField label={t("updater.currentVersion", { v: version || "…" })}>
-        <button className="btn btn--small" disabled={updaterBusy} onClick={() => void check()}>
-          {status.kind === "checking" ? t("updater.checking") : t("updater.checkButton")}
-        </button>
-      </SettingsField>
-      {status.kind === "available" && (
-        <div className="mem-hint">{t("updater.channelLabel", { channel: status.info.channel || "stable" })}</div>
-      )}
-      {status.kind === "upToDate" && <div className="mem-hint">{t("updater.upToDate")}</div>}
-      {status.kind === "available" && (
-        <>
-          <SettingsField label={t("updater.available", { v: status.info.latest })}>
-            <button className="btn btn--primary btn--small" onClick={() => downloadUpdate(status.info)}>
-              {status.info.canSelfUpdate ? t("updater.downloadUpdate") : t("updater.goToDownload")}
-            </button>
-          </SettingsField>
-          {!status.info.canSelfUpdate && <div className="mem-hint">{status.info.manualReason || t("updater.macHint")}</div>}
-        </>
-      )}
-      {status.kind === "downloading" && (
-        <div className="mem-hint">
-          {t("updater.downloading", {
-            done: mb(status.received),
-            total: mb(status.total),
-            pct: status.total > 0 ? Math.round((status.received / status.total) * 100) : 0,
-          })}
-        </div>
-      )}
-      {status.kind === "verifying" && <div className="mem-hint">{t("updater.verifying")}</div>}
-      {status.kind === "downloaded" && (
-        <SettingsField label={t("updater.downloaded", { v: status.info.latest })}>
-          <button className="btn btn--primary btn--small" onClick={installUpdate}>
-            {t("updater.restartInstall")}
-          </button>
-        </SettingsField>
-      )}
-      {status.kind === "installing" && <div className="mem-hint">{t("updater.installing")}</div>}
-      {status.kind === "done" && <div className="mem-hint">{t("updater.done")}</div>}
-      {status.kind === "error" && <div className="banner banner--error">{t("updater.failed", { msg: status.message })}</div>}
-      {configPath && (
-        <Tooltip label={configPath} fill block className="mem-hint settings-config-path">
-          {t("settings.config", { path: configPath })}
-        </Tooltip>
-      )}
-    </SettingsSection>
-  );
-}

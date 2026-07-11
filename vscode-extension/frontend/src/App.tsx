@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, KeyboardEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
+import type { CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
 import { ShellExpandProvider, useShellExpand } from "./lib/shellExpand";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -10,11 +10,8 @@ import {
   Activity,
   Command,
   Copy,
-  Copy as RestoreIcon,
   GitBranch,
-  Minus,
   Search,
-  Square,
   SquarePen,
   FileDown,
   FileImage,
@@ -33,10 +30,8 @@ import {
   Keyboard,
   MoreHorizontal,
   Palette,
-  X,
 } from "lucide-react";
 import { useToast } from "./lib/toast";
-import { useWailsResizeFix } from "./lib/useWailsResizeFix";
 import { asArray } from "./lib/array";
 import { clearLegacyLangPref, normalizeLangPref, readLegacyLangPref, useI18n, useT, type Translator } from "./lib/i18n";
 import { useController, type Item, type LiveStream } from "./lib/useController";
@@ -51,7 +46,6 @@ import { AskCard } from "./components/AskCard";
 import { UndoRewindBanner } from "./components/UndoRewindBanner";
 import { ClearContextCard } from "./components/ClearContextCard";
 import { CommandPalette, type PaletteItem } from "./components/CommandPalette";
-import { UpdateBanner } from "./components/UpdateBanner";
 import { ContextPanel } from "./components/ContextPanel";
 import { WorkspacePanel } from "./components/WorkspacePanel";
 import { Tooltip } from "./components/Tooltip";
@@ -152,7 +146,7 @@ import {
   type Theme,
 } from "./lib/theme";
 import { applyTextSize, DEFAULT_TEXT_SIZE, getTextSize, nextTextSize } from "./lib/textSize";
-import { useViewportHeightVar, useWindowStatePersistence } from "./lib/windowState";
+import { useViewportHeightVar } from "./lib/windowState";
 import { availableWorkspacePanelWidth, resolveLiveWorkspacePanelWidth, resolveWorkspacePanelWidth, workspacePanelAriaMinWidth } from "./lib/workspaceLayout";
 import { createRafResizeUpdater } from "./lib/resizeDrag";
 import { useGlobalShortcut } from "./lib/keyboardShortcuts";
@@ -200,64 +194,6 @@ type HistoryScopeFilter = { scope: "global" | "project"; workspaceRoot: string }
 type WorkspaceInsertTarget = "composer" | "planRevision";
 type DesktopPlatform = "darwin" | "windows" | "linux";
 
-function WindowsWindowControls() {
-  const [maximised, setMaximised] = useState(false);
-
-  const syncMaximised = useCallback(() => {
-    void app.IsMainWindowMaximised()
-      .then(setMaximised)
-      .catch(() => setMaximised(false));
-  }, []);
-
-  useEffect(() => {
-    syncMaximised();
-    window.addEventListener("resize", syncMaximised);
-    window.addEventListener("focus", syncMaximised);
-    return () => {
-      window.removeEventListener("resize", syncMaximised);
-      window.removeEventListener("focus", syncMaximised);
-    };
-  }, [syncMaximised]);
-
-  const toggleMaximise = useCallback(() => {
-    void app.ToggleMaximiseMainWindow()
-      .then(() => window.setTimeout(syncMaximised, 80))
-      .catch(() => undefined);
-  }, [syncMaximised]);
-
-  return (
-    <div className="windows-window-controls" aria-label="Window controls">
-      <button
-        className="windows-window-control windows-window-control--minimize"
-        type="button"
-        aria-label="Minimize window"
-        title="Minimize"
-        onClick={() => void app.MinimiseMainWindow()}
-      >
-        <Minus size={13} strokeWidth={1.9} />
-      </button>
-      <button
-        className="windows-window-control windows-window-control--maximize"
-        type="button"
-        aria-label="Maximize or restore window"
-        aria-pressed={maximised}
-        title={maximised ? "Restore" : "Maximize"}
-        onClick={toggleMaximise}
-      >
-        {maximised ? <RestoreIcon size={12} strokeWidth={1.75} /> : <Square size={11} strokeWidth={1.8} />}
-      </button>
-      <button
-        className="windows-window-control windows-window-control--close"
-        type="button"
-        aria-label="Close window"
-        title="Close"
-        onClick={() => void app.CloseMainWindow()}
-      >
-        <X size={13} strokeWidth={1.9} />
-      </button>
-    </div>
-  );
-}
 type HistoryViewState =
   | { kind: "history"; source: "scope"; filter: HistoryScopeFilter; sessions: SessionMeta[] }
   | { kind: "history"; source: "all"; sessions: SessionMeta[] }
@@ -924,7 +860,6 @@ function SettingsStandaloneView() {
         <SettingsPanel
           initialTab="general"
           agentRunning={false}
-          desktopPlatform="linux"
           onClose={() => { /* tab will be closed by user */ }}
           onChanged={(settings) => {
             if (!settings) return;
@@ -1012,7 +947,6 @@ export default function App() {
   const setSettingsFocus = useOverlayStore((s) => s.setSettingsFocus);
   const [desktopLayoutStyle, setDesktopLayoutStyle] = useState<DesktopLayoutStyle>("workbench");
   const singleSurfaceLayout = desktopLayoutStyle === "workbench" || desktopLayoutStyle === "creation";
-  const [startupUpdateChecksEnabled, setStartupUpdateChecksEnabled] = useState<boolean | null>(null);
   const [histView, setHistView] = useState<HistoryViewState | null>(null);
   const paletteOpen = useOverlayStore((s) => s.paletteOpen);
   const setPaletteOpen = useOverlayStore((s) => s.setPaletteOpen);
@@ -1086,7 +1020,6 @@ export default function App() {
   const transientOverlayDismissSignal = useOverlayStore((s) => s.transientOverlayDismissSignal);
   const setTransientOverlayDismissSignal = useOverlayStore((s) => s.setTransientOverlayDismissSignal);
   const [desktopPlatform, setDesktopPlatform] = useState<DesktopPlatform>(detectBrowserPlatform);
-  useWailsResizeFix(desktopPlatform === "windows");
   const [renamingTopicId, setRenamingTopicId] = useState<string | null>(null);
   const [topicTitleDraft, setTopicTitleDraft] = useState("");
   const topicExportOpen = useOverlayStore((s) => s.topicExportOpen);
@@ -1108,8 +1041,6 @@ export default function App() {
   const sidebarTogglePressTimerRef = useRef<number | null>(null);
   const workspaceTogglePressTimerRef = useRef<number | null>(null);
 
-  // Persist window geometry across launches.
-  useWindowStatePersistence();
   useViewportHeightVar();
   useEffect(() => {
     document.documentElement.setAttribute("data-platform", desktopPlatform);
@@ -1223,7 +1154,6 @@ export default function App() {
       applyTheme(nextTheme, nextStyle, { persist: false });
       setDesktopLayoutStyle(normalizeDesktopLayoutStyle(settings.desktopLayoutStyle));
       setLocalePref(normalizeLangPref(settings.desktopLanguage));
-      setStartupUpdateChecksEnabled(settings.checkUpdates !== false);
     },
     [setLocalePref],
   );
@@ -1261,7 +1191,6 @@ export default function App() {
     };
     void syncDesktopPreferences().catch((e) => {
       console.warn("desktop preferences sync failed", e);
-      setStartupUpdateChecksEnabled(true);
     });
     return () => {
       cancelled = true;
@@ -1277,12 +1206,9 @@ export default function App() {
 
   // Open settings when the native menu item (CmdOrCtrl+,) is activated.
   useEffect(() => {
-    if (typeof window === "undefined" || !window.runtime) return;
-    return window.runtime.EventsOn("app:open-settings", () => {
-      closeTransientOverlays();
-      setSettingsTarget("general");
-    });
-  }, [closeTransientOverlays]);
+    // VSCode extension opens settings via the webview message bridge.
+    return () => {};
+  }, []);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onResize = () => setViewportWidth(window.innerWidth);
@@ -2937,15 +2863,6 @@ export default function App() {
       ].filter(Boolean).join(" · ")
     : "";
   const sidebarWorkbench = desktopLayoutStyle === "workbench";
-  const windowsFramelessChrome = desktopPlatform === "windows";
-  const handleWindowsTitlebarDoubleClick = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
-    if (!windowsFramelessChrome) return;
-    const target = event.target as HTMLElement | null;
-    if (!target?.closest(".app-chrome, .topicbar, .workbench-dock__tools")) return;
-    if (target.closest("button, input, textarea, select, a, [role='button'], [role='tab'], .windows-window-controls")) return;
-    event.preventDefault();
-    void app.ToggleMaximiseMainWindow();
-  }, [windowsFramelessChrome]);
   // Creation keeps the classic sidebar/chat structure while gating chrome tweaks
   // behind its own style flag so classic/workbench remain unchanged.
   const appChromeHidden = sidebarWorkbench || sidebarCreation;
@@ -2962,11 +2879,9 @@ export default function App() {
     <TextSizeHotkeys />
       <div
         ref={appRef}
-        onDoubleClickCapture={handleWindowsTitlebarDoubleClick}
         className={[
         "app",
         `app--${desktopPlatform}`,
-        windowsFramelessChrome ? "app--windows-frameless" : "",
         browserPreviewChrome ? "app--browser-preview" : "",
         sidebarWorkbench ? "app--workbench" : "",
         sidebarCreation ? "app--creation" : "",
@@ -3511,7 +3426,6 @@ export default function App() {
             </div>
           )}
 
-          <UpdateBanner enabled={startupUpdateChecksEnabled === true} />
 
           <main className="main">
             {sidebarImDetailConnection ? (
@@ -3786,7 +3700,6 @@ export default function App() {
             initialTab={settingsTarget}
             initialFocus={settingsFocus ?? undefined}
             agentRunning={state.running}
-            desktopPlatform={desktopPlatform}
             onClose={() => {
               setSettingsFocus(null);
               setSettingsTarget(null);
@@ -3831,7 +3744,6 @@ export default function App() {
       <HeartbeatPanel open={heartbeatOpen} onClose={() => setHeartbeatOpen(false)} onOpenTopic={(scope, workspaceRoot, topicId) => {
         void handleOpenTopic(scope, workspaceRoot, topicId);
       }} />
-      {windowsFramelessChrome && <WindowsWindowControls />}
     </div>
     </ShellExpandProvider>
   );

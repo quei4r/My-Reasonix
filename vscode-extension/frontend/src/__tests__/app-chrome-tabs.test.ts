@@ -259,37 +259,6 @@ for (const selector of [
 }
 
 for (const selector of [
-  ".app--windows-frameless .app-chrome--native-tabs",
-  ":root[data-theme-style] .app--windows-frameless .app-chrome--native-tabs",
-]) {
-  const paddingRight = finalDeclaration(selector, "padding-right") ?? "";
-  ok(
-    finalDeclaration(selector, "--windows-frameless-titlebar-tools-offset") === "var(--windows-window-controls-safe)" &&
-      paddingRight.includes("--windows-frameless-titlebar-tools-offset") &&
-      paddingRight.includes("--chrome-panel-control-size") &&
-      !paddingRight.includes("--chrome-right-toggle-offset"),
-    `${selector} keeps titlebar tools fixed beside the Windows controls`,
-  );
-}
-
-for (const selector of [
-  ".app--windows-frameless .app-chrome--native-tabs .app-chrome__panel-toggle--right",
-  ":root[data-theme-style] .app--windows-frameless .app-chrome--native-tabs .app-chrome__panel-toggle--right",
-]) {
-  ok(
-    finalDeclaration(selector, "right") === "calc(var(--windows-frameless-titlebar-tools-offset) + 8px)",
-    `${selector} stays fixed outside the Windows window controls`,
-  );
-}
-
-ok(
-  finalDeclaration(".app--windows-frameless:not(.app--workbench):not(.app--creation) .app-chrome--native-tabs .app-chrome__drag-rail", "--wails-draggable") === "drag" &&
-    finalDeclaration(".app--windows-frameless:not(.app--workbench):not(.app--creation) .app-chrome--native-tabs .app-chrome__drag-rail", "right")?.includes("--windows-window-controls-safe") &&
-    finalDeclaration(".app--windows .app-chrome--native-tabs .tabbar", "--wails-draggable") === "no-drag",
-  "Windows classic chrome keeps a draggable rail while tabs remain clickable",
-);
-
-for (const selector of [
   ".layout--workbench-chrome-hidden",
   ":root[data-theme-style] .layout--workbench-chrome-hidden",
 ]) {

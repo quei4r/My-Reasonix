@@ -18170,145 +18170,6 @@ body > .mermaid-diagram--fullscreen {
 
 }
 
-/* InlineDiff: a compact before/after diff card. The header strip carries
-   the filename, the +/- counts, and a Copy button. The body is a monospace
-   pre with +/- row coloring. The CSS tokens are the same --add-bg /
-   --del-bg the existing DiffView uses, so light/dark theme changes apply
-   uniformly. */
-.inline-diff {
-  margin: 4px 0;
-  border: 1px solid var(--border-soft);
-  border-radius: 6px;
-  background: var(--bg-soft);
-  overflow: hidden;
-}
-.inline-diff__head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 9px;
-  border-bottom: 1px solid var(--border-soft);
-  font-size: 11px;
-}
-.inline-diff__file {
-  font-family: var(--mono);
-  color: var(--fg-dim);
-  max-width: 60%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.inline-diff__stats {
-  display: inline-flex;
-  gap: 6px;
-  font-family: var(--mono);
-  font-size: 10.5px;
-}
-.inline-diff__add {
-  color: var(--add-fg);
-}
-.inline-diff__del {
-  color: var(--del-fg);
-}
-.inline-diff__spacer {
-  flex: 1;
-}
-.inline-diff__btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 6px;
-  font-family: var(--sans);
-  font-size: 10.5px;
-  color: var(--fg-dim);
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  cursor: pointer;
-}
-.inline-diff__btn:hover {
-  color: var(--fg);
-  background: var(--bg-elev);
-}
-.inline-diff__body {
-  margin: 0;
-  padding: 4px 0;
-  font-family: var(--mono);
-  font-size: 11.5px;
-  line-height: 1.55;
-  max-height: 320px;
-  overflow: auto;
-}
-.inline-diff__table {
-  display: block;
-  min-width: max-content;
-  width: 100%;
-}
-.inline-diff__row {
-  display: flex;
-  --inline-diff-row-bg: var(--bg-soft);
-  background: var(--inline-diff-row-bg);
-  box-sizing: border-box;
-  min-width: 100%;
-  width: 100%;
-}
-.inline-diff__row--add {
-  --inline-diff-row-bg: linear-gradient(var(--add-bg), var(--add-bg)), var(--bg-soft);
-}
-.inline-diff__row--del {
-  --inline-diff-row-bg: linear-gradient(var(--del-bg), var(--del-bg)), var(--bg-soft);
-}
-.inline-diff__gutter {
-  position: sticky;
-  left: 0;
-  z-index: var(--z-local-raised);
-  display: grid;
-  grid-template-columns: 3ch 3ch 10px;
-  gap: 5px;
-  flex: 0 0 auto;
-  padding: 0 6px 0 8px;
-  background: var(--inline-diff-row-bg);
-  box-shadow: 1px 0 0 var(--border-soft);
-  user-select: none;
-}
-.inline-diff__line {
-  color: var(--fg-faint);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-.inline-diff__sign {
-  width: 10px;
-  flex-shrink: 0;
-  text-align: center;
-  opacity: 0.6;
-  user-select: none;
-}
-.inline-diff__text {
-  flex: 1 0 auto;
-  padding: 0 8px 0 6px;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-.inline-diff__more {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  width: 100%;
-  padding: 5px 0;
-  font-size: 11px;
-  color: var(--fg-dim);
-  background: transparent;
-  border: 0;
-  border-top: 1px solid var(--border-soft);
-  cursor: pointer;
-}
-.inline-diff__more:hover {
-  color: var(--accent);
-  background: var(--bg-elev);
-
-}
-
 /* --- Right panel tabs (Files / Context) ------------------------------- */
 .right-panel {
   display: flex;
@@ -18527,80 +18388,12 @@ body > .mermaid-diagram--fullscreen {
   }
 }
 
-.windows-window-controls {
-  position: fixed;
-  top: 0;
-  right: 0;
-  z-index: var(--z-dock);
-  width: var(--windows-window-controls-width, 138px);
-  height: var(--windows-window-controls-height, 48px);
-  display: flex;
-  align-items: stretch;
-  justify-content: flex-end;
-  color: var(--fg-dim);
-  background: var(--bg-elev);
-  border-left: 1px solid var(--border-soft);
-  border-bottom: 1px solid var(--border-soft);
-  box-shadow: -12px 0 18px -18px color-mix(in srgb, var(--fg) 46%, transparent);
-  pointer-events: auto;
-  user-select: none;
-  --wails-draggable: no-drag;
-  transition: opacity var(--dur-base) ease;
-}
-
 /* When the workspace panel is closed (no layout--workspace-open or
    layout--workspace-maximized), make the window controls box transparent so it
    blends into the title bar / background instead of showing a distinct box. */
-.app--windows-frameless .layout:not(.layout--workspace-open):not(.layout--workspace-maximized) ~ .windows-window-controls {
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}
-:root[data-theme-style] .app--windows-frameless .layout:not(.layout--workspace-open):not(.layout--workspace-maximized) ~ .windows-window-controls {
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}
 
 /* When a drawer/palette overlay is open, dim the window controls so they
    visually sit behind the backdrop instead of staying highlighted on top. */
-.drawer-backdrop[data-state="open"] ~ .windows-window-controls {
-  opacity: 0.35;
-}
-:root[data-theme-style] .drawer-backdrop[data-state="open"] ~ .windows-window-controls {
-  opacity: 0.35;
-}
-
-.windows-window-control {
-  flex: 0 0 var(--windows-window-control-width, 46px);
-  width: var(--windows-window-control-width, 46px);
-  min-width: var(--windows-window-control-width, 46px);
-  height: 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: inherit;
-  transition:
-    background var(--dur-fast),
-    color var(--dur-fast);
-  --wails-draggable: no-drag;
-}
-
-.windows-window-control:hover,
-.windows-window-control:focus-visible {
-  color: var(--fg);
-  background: color-mix(in srgb, var(--fg-faint) 13%, transparent);
-  outline: none;
-}
-
-.windows-window-control--close:hover,
-.windows-window-control--close:focus-visible {
-  color: #fff;
-  background: #c42b1c;
-}
 
 .app--darwin .app-chrome--tabs {
   align-items: stretch;
@@ -18615,55 +18408,9 @@ body > .mermaid-diagram--fullscreen {
   --wails-draggable: no-drag;
 }
 
-.app--darwin .app-chrome--tabs .app-chrome__drag-rail,
-.app--windows-frameless:not(.app--workbench):not(.app--creation) .app-chrome--native-tabs .app-chrome__drag-rail {
-  display: block;
-  position: absolute;
-  top: 0;
-  z-index: var(--z-local-handle);
-  height: 10px;
-  --wails-draggable: drag;
-}
-
 .app--darwin .app-chrome--tabs .app-chrome__drag-rail {
   left: calc(var(--chrome-left-toggle-offset) + var(--chrome-toggle-size) + 12px);
   right: calc(var(--chrome-toggle-size) + var(--chrome-toggle-size) + 20px);
-}
-
-.app--windows-frameless:not(.app--workbench):not(.app--creation) .app-chrome--native-tabs .app-chrome__drag-rail {
-  left: calc(var(--chrome-toggle-size) + 16px);
-  right: calc(var(--windows-window-controls-safe) + var(--chrome-toggle-size) + 18px);
-}
-
-.app--darwin .app-chrome--tabs .app-chrome__drag-rail::before,
-.app--windows-frameless:not(.app--workbench):not(.app--creation) .app-chrome--native-tabs .app-chrome__drag-rail::before {
-  content: "";
-  position: absolute;
-  top: 3px;
-  left: 50%;
-  width: calc(100% - 24px);
-  height: 3px;
-  transform: translateX(-50%);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--fg-faint) 40%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border) 76%, transparent);
-  opacity: 0;
-  transition:
-    background 0.12s ease,
-    box-shadow 0.12s ease,
-    opacity 0.12s ease;
-}
-
-.app--darwin .app-chrome--tabs .app-chrome__drag-rail:hover::before,
-.app--windows-frameless:not(.app--workbench):not(.app--creation) .app-chrome--native-tabs .app-chrome__drag-rail:hover::before {
-  opacity: 0.72;
-}
-
-.app--darwin .app-chrome--tabs .app-chrome__drag-rail:active::before,
-.app--windows-frameless:not(.app--workbench):not(.app--creation) .app-chrome--native-tabs .app-chrome__drag-rail:active::before {
-  background: var(--accent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 68%, transparent);
-  opacity: 0.95;
 }
 
 .app--darwin .app-chrome--tabs .app-chrome__panel-toggle {
@@ -24354,9 +24101,6 @@ body > .mermaid-diagram--fullscreen {
   background: transparent;
 }
 
-
-
-
 @media (prefers-reduced-motion: no-preference) {
   :root[data-theme-style] .process-card:has(.process-card__spin)::after {
     background: linear-gradient(90deg, transparent, var(--accent), transparent);
@@ -24840,7 +24584,6 @@ body > .mermaid-diagram--fullscreen {
   background: var(--accent-soft);
   box-shadow: inset 3px 0 0 var(--accent);
 }
-
 
 :root[data-theme-style] .sidebar-resizer::after {
   background: var(--border-soft);
@@ -29577,78 +29320,14 @@ body > .mermaid-diagram--fullscreen {
   color: var(--fg-faint);
 }
 
-.app--windows-frameless {
-  --windows-window-controls-width: 138px;
-  --windows-window-control-width: 46px;
-  --windows-window-controls-gap: 18px;
-  --windows-window-controls-safe: calc(var(--windows-window-controls-width) + var(--windows-window-controls-gap));
-  --windows-window-controls-height: 48px;
-}
-
-.app--windows-frameless.app--workbench {
-  --windows-window-controls-height: 40px;
-}
-
-.app--windows-frameless:not(.app--workbench):not(.app--creation) {
-  --windows-window-controls-height: 38px;
-}
-
-:root[data-theme-style] .app--windows-frameless:not(.app--workbench):not(.app--creation) {
-  --windows-window-controls-height: 46px;
-}
-
-.app--windows-frameless.app--creation {
-  --windows-window-controls-height: 56px;
-}
-
 /* When workspace panel is open in creation mode, match the dock tools height
    (40px) instead of the tall 56px default, so the window controls box does not
    extend below the workbench-dock__tools. */
-.app--windows-frameless.app--creation .layout--workspace-open ~ .windows-window-controls,
-.app--windows-frameless.app--creation .layout--workspace-maximized ~ .windows-window-controls {
-  height: 40px;
-}
-:root[data-theme-style] .app--windows-frameless.app--creation .layout--workspace-open ~ .windows-window-controls,
-:root[data-theme-style] .app--windows-frameless.app--creation .layout--workspace-maximized ~ .windows-window-controls {
-  height: 40px;
-}
-
-.app--windows-frameless .app-chrome--native-tabs,
-:root[data-theme-style] .app--windows-frameless .app-chrome--native-tabs {
-  --windows-frameless-titlebar-tools-offset: var(--windows-window-controls-safe);
-  padding-right: calc(var(--windows-frameless-titlebar-tools-offset) + var(--chrome-panel-control-size, 30px) + 18px);
-}
-
-.app--windows-frameless .app-chrome--native-tabs .app-chrome__panel-toggle--right,
-:root[data-theme-style] .app--windows-frameless .app-chrome--native-tabs .app-chrome__panel-toggle--right {
-  right: calc(var(--windows-frameless-titlebar-tools-offset) + 8px);
-}
-
-.app--windows-frameless .topicbar,
-:root[data-theme-style] .app--windows-frameless .topicbar {
-  padding-right: var(--windows-window-controls-safe);
-}
 
 /* When workspace panel is open the workbench-dock covers the right edge, so the
    topicbar no longer needs the window-controls safe space — use the normal 18px
    padding instead to prevent buttons from being pushed off-screen or overlapping
    the dock. */
-.app--windows-frameless .layout--workspace-open .topicbar,
-.app--windows-frameless .layout--workspace-maximized .topicbar,
-:root[data-theme-style] .app--windows-frameless .layout--workspace-open .topicbar,
-:root[data-theme-style] .app--windows-frameless .layout--workspace-maximized .topicbar {
-  padding-right: 18px;
-}
-
-.app--windows-frameless .workbench-dock__tools,
-:root[data-theme-style] .app--windows-frameless .workbench-dock__tools {
-  padding-right: var(--windows-window-controls-safe);
-}
-
-.app--windows-frameless .workbench-dock__tabs,
-:root[data-theme-style] .app--windows-frameless .workbench-dock__tabs {
-  max-width: calc(100% - 4px);
-}
 
 @media (max-width: 820px) {
   .app .layout,
