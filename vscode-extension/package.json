@@ -4,6 +4,7 @@
   "description": "AI coding agent in your sidebar — powered by DeepSeek",
   "version": "0.1.0",
   "publisher": "quei4r",
+  "icon": "assets/icon.png",
   "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"

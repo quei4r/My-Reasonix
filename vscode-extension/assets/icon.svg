@@ -1,4 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <circle cx="12" cy="12" r="3"/>
-  <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <!-- M: 暖色，从上到下，顶部亮 → 底部深 -->
+    <linearGradient id="gradM" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F48771"/>
+      <stop offset="100%" stop-color="#C45A46"/>
+    </linearGradient>
+    <!-- R: 冷色，从下到上，底部深 → 顶部亮 -->
+    <linearGradient id="gradR" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#2A3FBD"/>
+      <stop offset="100%" stop-color="#4D6BFE"/>
+    </linearGradient>
+  </defs>
+  
+  <g fill="none" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 31.25 300 Q 21.25 200 51.25 100 L 106.25 250 L 161.25 100 Q 191.25 200 181.25 300" stroke="url(#gradM)"/>
+    <path d="M 226.25 300 L 226.25 100 Q 368.75 100 368.75 150 Q 368.75 200 226.25 200 L 368.75 300" stroke="url(#gradR)"/>
+  </g>
 </svg>
