@@ -143,9 +143,7 @@ eq(JSON.stringify(parseProviderExtraBody('{ "enable_thinking": true, "top_p": 0.
 let extraBodyRejected = false;
 try {
   parseProviderExtraBody("[true]");
-} catch {
-  extraBodyRejected = true;
-}
+} catch (err) { console.error("[catch] catch:", err); }
 ok(extraBodyRejected, "extra body editor rejects non-object JSON");
 const extraBodyTestT = ((key: string, vars?: Record<string, string | number>) => {
   if (key === "settings.providerExtraBodyError") return "localized extra body fallback";

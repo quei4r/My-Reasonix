@@ -12,6 +12,7 @@ import { formatGuardianAssessmentNotice } from "./guardianEvents";
 import { createRafBatch } from "./rafBatch";
 import { t, type DictKey } from "./i18n";
 import { fileDiffFromWire, summarize, summarizeFileDiff, type ToolFileDiff } from "./tools";
+import { logCatch } from "./logCatch";
 import { modeHasAutoApproveTools, normalizeMode, normalizeToolApprovalMode } from "./types";
 import type {
   BalanceInfo,
@@ -1070,14 +1071,12 @@ async function refreshMetaForTab(tabId: string, dispatchTo: (tabId: string, acti
     dispatchTo(tabId, { type: "meta", meta: await app.MetaForTab(tabId) });
     dispatchTo(tabId, { type: "context", context: await app.ContextUsageForTab(tabId) });
     dispatchTo(tabId, { type: "effort", effort: await app.EffortForTab(tabId) });
-  } catch {
-    /* ignore */
-  }
+  } catch (err) { console.error("[catch] useController.ts:catch", err); }
 }
 
 export function replayPendingPromptsForActiveTab(activeTabId: string | undefined, replay: () => Promise<void> = () => app.ReplayPendingPrompts()): void {
   if (!activeTabId) return;
-  void replay().catch(() => {});
+  void replay().catch(logCatch("async"));
 }
 
 export function useController() {
@@ -1128,7 +1127,7 @@ export function useController() {
   const waitForBackendActiveTab = useCallback(async (tabId: string): Promise<boolean> => {
     const pending = backendActivationPromises.current.get(tabId);
     if (pending) {
-      const activated = await pending.catch(() => false);
+      const activated = await pending.catch(logCatch("async", false));
       if (!activated) return false;
     }
     return backendActiveTabIdRef.current === tabId && activeTabIdRef.current === tabId;
@@ -1152,7 +1151,7 @@ export function useController() {
   }, []);
   const refreshCheckpoints = useCallback(async (tabId: string) => {
     const seq = bumpCheckpointRefreshSeq(tabId);
-    const checkpoints = await app.CheckpointsForTab(tabId).catch(() => undefined);
+    const checkpoints = await app.CheckpointsForTab(tabId).catch(logCatch("async", undefined));
     if (checkpointRefreshSeq.current.get(tabId) !== seq || checkpoints === undefined) return;
     dispatchTo(tabId, { type: "checkpoints", checkpoints: asArray(checkpoints) });
   }, [bumpCheckpointRefreshSeq, dispatchTo]);
@@ -1398,9 +1397,9 @@ export function useController() {
       return tabs;
     }
     const [jobs, effort, balance] = await Promise.all([
-      app.JobsForTab(tabId).catch(() => undefined),
-      app.EffortForTab(tabId).catch(() => undefined),
-      app.BalanceForTab(tabId).catch(() => undefined),
+      app.JobsForTab(tabId).catch(logCatch("async", undefined)),
+      app.EffortForTab(tabId).catch(logCatch("all", undefined)),
+      app.BalanceForTab(tabId).catch(logCatch("EffortForTab", undefined)),
     ]);
     if (jobs) dispatchTo(tabId, { type: "jobs", jobs: asArray(jobs) });
     if (effort) dispatchTo(tabId, { type: "effort", effort });
@@ -1427,7 +1426,7 @@ export function useController() {
         if (stillReconciling && attempt + 1 < CANCEL_RECONCILE_DELAYS_MS.length) {
           scheduleCancelReconcile(tabId, attempt + 1);
         }
-      }).catch(() => {});
+      }).catch(logCatch("async"));
     }, delay);
     cancelReconcileTimers.current.set(tabId, timer);
   }, [clearCancelReconcileTimer, reconcileTabRuntime]);
@@ -1460,19 +1459,19 @@ export function useController() {
         if (!e.err) {
           app.HistoryCheckpointTurnsForTab(targetTabId)
             .then((turns) => dispatchTo(targetTabId, { type: "history_checkpoint_turns", turns: asArray(turns) }))
-            .catch(() => {});
+            .catch(logCatch("async"));
         }
         app
           .ContextUsageForTab(targetTabId)
           .then((context) => dispatchTo(targetTabId, { type: "context", context }))
-          .catch(() => {});
-        app.BalanceForTab(targetTabId).then((balance) => dispatchTo(targetTabId, { type: "balance", balance })).catch(() => {});
-        app.EffortForTab(targetTabId).then((effort) => dispatchTo(targetTabId, { type: "effort", effort })).catch(() => {});
+          .catch(logCatch("async"));
+        app.BalanceForTab(targetTabId).then((balance) => dispatchTo(targetTabId, { type: "balance", balance })).catch(logCatch("async"));
+        app.EffortForTab(targetTabId).then((effort) => dispatchTo(targetTabId, { type: "effort", effort })).catch(logCatch("async"));
         void refreshCheckpoints(targetTabId);
         void refreshMetaForTab(targetTabId, dispatchTo);
       }
       if (e.kind === "turn_done" || e.kind === "notice") {
-        app.JobsForTab(targetTabId).then((jobs) => dispatchTo(targetTabId, { type: "jobs", jobs: asArray(jobs) })).catch(() => {});
+        app.JobsForTab(targetTabId).then((jobs) => dispatchTo(targetTabId, { type: "jobs", jobs: asArray(jobs) })).catch(logCatch("async"));
       }
     });
 
@@ -1494,7 +1493,7 @@ export function useController() {
     // approval/ask prompt that was already blocking a tab before this load —
     // otherwise a session left mid-confirmation shows "waiting" with no modal
     // and no way to stop (#3844).
-    void app.ReplayPendingPrompts().catch(() => {});
+    void app.ReplayPendingPrompts().catch(logCatch("async"));
 
     return () => {
       textBatch.drain();
@@ -1632,44 +1631,44 @@ export function useController() {
   const approve = useCallback((id: string, allow: boolean, session: boolean, persist: boolean) => {
     if (!activeTabId) return;
     dispatchTo(activeTabId, { type: "clearApproval" });
-    app.ApproveTab(activeTabId, id, allow, session, persist).catch(() => {});
+    app.ApproveTab(activeTabId, id, allow, session, persist).catch(logCatch("async"));
   }, [activeTabId, dispatchTo]);
 
   const answerQuestion = useCallback((id: string, answers: QuestionAnswer[]) => {
     if (!activeTabId) return;
     dispatchTo(activeTabId, { type: "clearAsk" });
-    app.AnswerQuestionForTab(activeTabId, id, answers).catch(() => {});
+    app.AnswerQuestionForTab(activeTabId, id, answers).catch(logCatch("async"));
   }, [activeTabId, dispatchTo]);
 
   const setControllerMode = useCallback((mode: Mode): Promise<void> => {
     if (!activeTabId) return Promise.resolve();
     return app.SetModeForTab(activeTabId, mode).then(() => {
       if (modeHasAutoApproveTools(mode) && activeTabId) dispatchTo(activeTabId, { type: "clearApproval" });
-    }).catch(() => {});
+    }).catch(logCatch("async"));
   }, [activeTabId, dispatchTo]);
 
   const setCollaborationMode = useCallback(async (mode: CollaborationMode): Promise<void> => {
     if (!activeTabId) return;
-    await app.SetCollaborationModeForTab(activeTabId, mode).catch(() => {});
+    await app.SetCollaborationModeForTab(activeTabId, mode).catch(logCatch("async"));
     await refreshMetaForTab(activeTabId, dispatchTo);
   }, [activeTabId, dispatchTo]);
 
   const setToolApprovalMode = useCallback(async (mode: ToolApprovalMode): Promise<void> => {
     if (!activeTabId) return;
-    await app.SetToolApprovalModeForTab(activeTabId, mode).catch(() => {});
+    await app.SetToolApprovalModeForTab(activeTabId, mode).catch(logCatch("async"));
     if (mode === "auto" || mode === "yolo") dispatchTo(activeTabId, { type: "clearApproval" });
     await refreshMetaForTab(activeTabId, dispatchTo);
   }, [activeTabId, dispatchTo]);
 
   const setGoal = useCallback(async (goal: string): Promise<void> => {
     if (!activeTabId) return;
-    await app.SetGoalForTab(activeTabId, goal).catch(() => {});
+    await app.SetGoalForTab(activeTabId, goal).catch(logCatch("async"));
     await refreshMetaForTab(activeTabId, dispatchTo);
   }, [activeTabId, dispatchTo]);
 
   const clearGoal = useCallback(async (): Promise<void> => {
     if (!activeTabId) return;
-    await app.ClearGoalForTab(activeTabId).catch(() => {});
+    await app.ClearGoalForTab(activeTabId).catch(logCatch("async"));
     await refreshMetaForTab(activeTabId, dispatchTo);
   }, [activeTabId, dispatchTo]);
 
@@ -1701,7 +1700,7 @@ export function useController() {
       dispatchTo(tabId, { type: "history", messages: [] });
       dispatchTo(tabId, { type: "hydrate_done" });
       void refreshMetaForTab(tabId, dispatchTo);
-      app.ContextUsageForTab(tabId).then((context) => dispatchTo(tabId, { type: "context", context })).catch(() => {});
+      app.ContextUsageForTab(tabId).then((context) => dispatchTo(tabId, { type: "context", context })).catch(logCatch("async"));
       void refreshCheckpoints(tabId);
     }
   }, [activeTabId, bumpCheckpointRefreshSeq, bumpSessionLoadSeq, dispatchTo, loadSessionDataForTab, refreshCheckpoints, waitForBackendActiveTab]);
@@ -1717,10 +1716,7 @@ export function useController() {
     }
     try {
       await app.ClearSession();
-    } catch {
-      if (tabId) void loadSessionDataForTab(tabId);
-      return;
-    }
+    } catch (err) { console.error("[catch] useController.ts:catch", err); }
     if (tabId) bumpSessionLoadSeq(tabId);
     invalidateCache();
     if (tabId) {
@@ -1730,8 +1726,8 @@ export function useController() {
     }
   }, [activeTabId, bumpCheckpointRefreshSeq, bumpSessionLoadSeq, dispatchTo, loadSessionDataForTab, waitForBackendActiveTab]);
 
-  const listSessions = useCallback(async (): Promise<SessionMeta[]> => asArray<SessionMeta>(await app.ListSessions().catch(() => [])), []);
-  const listTrashedSessions = useCallback(async (): Promise<SessionMeta[]> => asArray<SessionMeta>(await app.ListTrashedSessions().catch(() => [])), []);
+  const listSessions = useCallback(async (): Promise<SessionMeta[]> => asArray<SessionMeta>(await app.ListSessions().catch(logCatch("async", []))), []);
+  const listTrashedSessions = useCallback(async (): Promise<SessionMeta[]> => asArray<SessionMeta>(await app.ListTrashedSessions().catch(logCatch("async", []))), []);
   const resumeSession = useCallback(async (path: string, tabId?: string) => {
     const targetTabId = tabId || activeTabId;
     if (!targetTabId) return;
@@ -1755,7 +1751,7 @@ export function useController() {
     dispatchTo(targetTabId, { type: "reset" });
     dispatchTo(targetTabId, { type: "history_page", page, mode: "replace" });
     dispatchTo(targetTabId, { type: "hydrate_done" });
-    app.ContextUsageForTab(targetTabId).then((context) => dispatchTo(targetTabId, { type: "context", context })).catch(() => {});
+    app.ContextUsageForTab(targetTabId).then((context) => dispatchTo(targetTabId, { type: "context", context })).catch(logCatch("async"));
     void refreshCheckpoints(targetTabId);
   }, [activeTabId, bumpSessionLoadSeq, dispatchTo, refreshCheckpoints, sessionLoadCurrent, waitForBackendActiveTab, waitForTabReady]);
 
@@ -1778,15 +1774,15 @@ export function useController() {
     dispatchTo(tabId, { type: "reset" });
     dispatchTo(tabId, { type: "history_page", page, mode: "replace" });
     dispatchTo(tabId, { type: "hydrate_done" });
-    app.ContextUsageForTab(tabId).then((context) => dispatchTo(tabId, { type: "context", context })).catch(() => {});
+    app.ContextUsageForTab(tabId).then((context) => dispatchTo(tabId, { type: "context", context })).catch(logCatch("async"));
     void refreshCheckpoints(tabId);
   }, [bumpSessionLoadSeq, dispatchTo, refreshCheckpoints, sessionLoadCurrent, waitForTabReady]);
 
-  const previewSession = useCallback(async (path: string): Promise<HistoryMessage[]> => asArray<HistoryMessage>(await app.PreviewSession(path).catch(() => [])), []);
+  const previewSession = useCallback(async (path: string): Promise<HistoryMessage[]> => asArray<HistoryMessage>(await app.PreviewSession(path).catch(logCatch("async", []))), []);
   const deleteSession = useCallback((path: string) => app.DeleteSession(path).finally(() => invalidateCache()), []);
-  const restoreSession = useCallback((path: string) => app.RestoreSession(path).catch(() => {}).finally(() => invalidateCache()), []);
-  const purgeTrashedSession = useCallback((path: string) => app.PurgeTrashedSession(path).catch(() => {}).finally(() => invalidateCache()), []);
-  const renameSession = useCallback((path: string, title: string) => app.RenameSession(path, title).catch(() => {}).finally(() => invalidateCache()), []);
+  const restoreSession = useCallback((path: string) => app.RestoreSession(path).catch(logCatch("async")).finally(() => invalidateCache()), []);
+  const purgeTrashedSession = useCallback((path: string) => app.PurgeTrashedSession(path).catch(logCatch("async")).finally(() => invalidateCache()), []);
+  const renameSession = useCallback((path: string, title: string) => app.RenameSession(path, title).catch(logCatch("async")).finally(() => invalidateCache()), []);
 
   const refreshMeta = useCallback(async () => {
     if (!activeTabId) return;
@@ -1794,7 +1790,7 @@ export function useController() {
       dispatchTo(activeTabId, { type: "meta", meta: await app.MetaForTab(activeTabId) });
       dispatchTo(activeTabId, { type: "context", context: await app.ContextUsageForTab(activeTabId) });
       dispatchTo(activeTabId, { type: "effort", effort: await app.EffortForTab(activeTabId) });
-    } catch { /* ignore */ }
+    } catch (err) { console.error("[catch] useController.ts:catch", err); }
   }, [activeTabId, dispatchTo]);
 
   const refreshWorkspaceState = useCallback(async (path: string): Promise<string> => {
@@ -1815,7 +1811,7 @@ export function useController() {
     const tabId = activeTabIdRef.current;
     if (!tabId) return;
     void waitForBackendActiveTab(tabId).then((active) => {
-      if (active) app.Compact().catch(() => {});
+      if (active) app.Compact().catch(logCatch("async"));
     });
   }, [waitForBackendActiveTab]);
 
@@ -1831,7 +1827,7 @@ export function useController() {
       dispatchTo(activeTabId, { type: "meta", meta: await app.MetaForTab(activeTabId) });
       dispatchTo(activeTabId, { type: "context", context: await app.ContextUsageForTab(activeTabId) });
       dispatchTo(activeTabId, { type: "effort", effort: await app.EffortForTab(activeTabId) });
-    } catch { /* ignore */ }
+    } catch (err) { console.error("[catch] useController.ts:catch", err); }
   }, [activeTabId, dispatchTo]);
 
   const setEffort = useCallback(async (level: string) => {
@@ -1846,7 +1842,7 @@ export function useController() {
       dispatchTo(activeTabId, { type: "meta", meta: await app.MetaForTab(activeTabId) });
       dispatchTo(activeTabId, { type: "context", context: await app.ContextUsageForTab(activeTabId) });
       dispatchTo(activeTabId, { type: "effort", effort: await app.EffortForTab(activeTabId) });
-    } catch { /* ignore */ }
+    } catch (err) { console.error("[catch] useController.ts:catch", err); }
   }, [activeTabId, dispatchTo]);
 
   const setTokenMode = useCallback(async (mode: TokenMode) => {
@@ -1861,14 +1857,14 @@ export function useController() {
       dispatchTo(activeTabId, { type: "meta", meta: await app.MetaForTab(activeTabId) });
       dispatchTo(activeTabId, { type: "context", context: await app.ContextUsageForTab(activeTabId) });
       dispatchTo(activeTabId, { type: "effort", effort: await app.EffortForTab(activeTabId) });
-    } catch { /* ignore */ }
+    } catch (err) { console.error("[catch] useController.ts:catch", err); }
   }, [activeTabId, dispatchTo]);
 
   const fetchMemory = useCallback((): Promise<MemoryView> =>
     app.Memory().catch(() => ({ docs: [], facts: [], archives: [], scopes: [], storeDir: "", available: false })), []);
-  const remember = useCallback(async (scope: string, note: string) => { await app.Remember(scope, note).catch(() => {}); }, []);
-  const forget = useCallback(async (name: string) => { await app.Forget(name).catch(() => {}); }, []);
-  const saveDoc = useCallback(async (path: string, body: string) => { await app.SaveDoc(path, body).catch(() => {}); }, []);
+  const remember = useCallback(async (scope: string, note: string) => { await app.Remember(scope, note).catch(logCatch("async")); }, []);
+  const forget = useCallback(async (name: string) => { await app.Forget(name).catch(logCatch("async")); }, []);
+  const saveDoc = useCallback(async (path: string, body: string) => { await app.SaveDoc(path, body).catch(logCatch("async")); }, []);
 
   const rewind = useCallback(async (turn: number, scope: string): Promise<boolean> => {
     const sourceTabId = activeTabId;
@@ -1995,7 +1991,7 @@ export function useController() {
       preserveCachedHistory,
       sessionPath: meta.sessionPath,
     });
-    if (isNewTab) void load.then(() => reconcileTabRuntime(meta.id, { hydrateSessionData: false })).catch(() => {});
+    if (isNewTab) void load.then(() => reconcileTabRuntime(meta.id, { hydrateSessionData: false })).catch(logCatch("async"));
     else void load;
     return meta;
   }, [confirmBackendActiveTab, dispatchRuntimeStatusForTab, dispatchTo, loadSessionDataForTab, reconcileTabRuntime]);
@@ -2016,7 +2012,7 @@ export function useController() {
       preserveCachedHistory,
       sessionPath: meta.sessionPath,
     });
-    if (isNewTab) void load.then(() => reconcileTabRuntime(meta.id, { hydrateSessionData: false })).catch(() => {});
+    if (isNewTab) void load.then(() => reconcileTabRuntime(meta.id, { hydrateSessionData: false })).catch(logCatch("async"));
     else void load;
     return meta;
   }, [confirmBackendActiveTab, dispatchRuntimeStatusForTab, dispatchTo, loadSessionDataForTab, reconcileTabRuntime]);
@@ -2037,7 +2033,7 @@ export function useController() {
       preserveCachedHistory,
       sessionPath: meta.sessionPath,
     });
-    if (isNewTab) void load.then(() => reconcileTabRuntime(meta.id, { hydrateSessionData: false })).catch(() => {});
+    if (isNewTab) void load.then(() => reconcileTabRuntime(meta.id, { hydrateSessionData: false })).catch(logCatch("async"));
     else void load;
     return meta;
   }, [confirmBackendActiveTab, dispatchRuntimeStatusForTab, dispatchTo, loadSessionDataForTab, reconcileTabRuntime]);
@@ -2057,7 +2053,7 @@ export function useController() {
     dispatchRuntimeStatusForTab(meta.id, meta);
     void loadSessionDataForTab(meta.id, true, "open-topic", { placeholderItems: prevItems })
       .then(() => reconcileTabRuntime(meta.id, { hydrateSessionData: false }))
-      .catch(() => {});
+      .catch(logCatch("async"));
     return meta;
   }, [confirmBackendActiveTab, dispatchRuntimeStatusForTab, dispatchTo, loadSessionDataForTab, reconcileTabRuntime]);
 
@@ -2072,7 +2068,7 @@ export function useController() {
     dispatchTo(meta.id, { type: "optimistic_meta", meta: metaFromTab(meta, statesRef.current.get(meta.id)?.meta) });
     dispatchRuntimeStatusForTab(meta.id, meta);
     const load = loadSessionDataForTab(meta.id, isNewTab, "open-topic");
-    if (isNewTab) void load.then(() => reconcileTabRuntime(meta.id, { hydrateSessionData: false })).catch(() => {});
+    if (isNewTab) void load.then(() => reconcileTabRuntime(meta.id, { hydrateSessionData: false })).catch(logCatch("async"));
     else void load;
     return meta;
   }, [confirmBackendActiveTab, dispatchRuntimeStatusForTab, dispatchTo, loadSessionDataForTab, reconcileTabRuntime]);
@@ -2089,7 +2085,7 @@ export function useController() {
     dispatchRuntimeStatusForTab(meta.id, meta);
     void loadSessionDataForTab(meta.id, true, "open-topic")
       .then(() => reconcileTabRuntime(meta.id, { hydrateSessionData: false }))
-      .catch(() => {});
+      .catch(logCatch("async"));
     return meta;
   }, [confirmBackendActiveTab, dispatchRuntimeStatusForTab, dispatchTo, loadSessionDataForTab, reconcileTabRuntime]);
 
@@ -2099,13 +2095,13 @@ export function useController() {
       statesRef.current.delete(tabId);
       bump();
       if (tabId === activeTabId) await syncActiveTabFromBackend(false);
-    } catch { /* ignore */ }
+    } catch (err) { console.error("[catch] useController.ts:catch", err); }
   }, [activeTabId, bump, syncActiveTabFromBackend]);
 
   const reorderTabs = useCallback(async (tabIds: string[]) => {
     try {
       await app.ReorderTabs(tabIds);
-    } catch { /* ignore */ }
+    } catch (err) { console.error("[catch] useController.ts:catch", err); }
   }, []);
 
   return {

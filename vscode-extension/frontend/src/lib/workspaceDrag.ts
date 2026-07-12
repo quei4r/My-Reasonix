@@ -25,7 +25,5 @@ export function readWorkspaceReferenceDrag(dataTransfer: DataTransfer): Workspac
     const payload = JSON.parse(dataTransfer.getData(WORKSPACE_REF_DRAG_TYPE)) as WorkspaceRefDragPayload;
     if (!payload.path) return null;
     return { path: payload.path, isDir: payload.isDir };
-  } catch {
-    return null;
-  }
+  } catch (err) { console.error("[catch] workspaceDrag.ts:catch", err); return null; }
 }

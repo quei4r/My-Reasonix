@@ -6,6 +6,7 @@ import { useT } from "../lib/i18n";
 import type { ModelInfo } from "../lib/types";
 import { AnchoredPopover } from "./AnchoredPopover";
 import { Tooltip } from "./Tooltip";
+import { logCatch } from "../lib/logCatch";
 
 // ModelSwitcher opens an upward popover listing configured providers. Selecting
 // one switches the active model while the current conversation continues.
@@ -30,7 +31,7 @@ export function ModelSwitcher({ label, tabId, onPick }: { label: string; tabId?:
   }, []);
 
   const loadModels = useCallback(() => {
-    return (tabId ? app.ModelsForTab(tabId) : app.Models()).then((next) => setModels(asArray(next))).catch(() => {});
+    return (tabId ? app.ModelsForTab(tabId) : app.Models()).then((next) => setModels(asArray(next))).catch(logCatch("async"));
   }, [tabId]);
 
   useEffect(() => {

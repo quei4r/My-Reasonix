@@ -73,9 +73,7 @@ export function readLegacyLangPref(): LangPref {
 export function clearLegacyLangPref(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    /* private mode / no storage */
-  }
+  } catch (err) { console.error("[catch] i18n.tsx:catch", err); }
 }
 
 // translate resolves a key for a locale and fills {placeholders}. Missing keys fall

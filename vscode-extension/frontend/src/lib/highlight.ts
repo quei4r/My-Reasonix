@@ -113,9 +113,7 @@ export function highlightToHtml(code: string, lang?: string): string {
   let html: string;
   try {
     html = hljs.highlight(code, { language: resolved, ignoreIllegals: true }).value;
-  } catch {
-    return escapeHtml(code);
-  }
+  } catch (err) { console.error("[catch] highlight.ts:catch", err); return escapeHtml(code); }
   cachePut(code, resolved, html);
   return html;
 }

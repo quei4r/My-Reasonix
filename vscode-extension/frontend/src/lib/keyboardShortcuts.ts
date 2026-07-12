@@ -308,9 +308,7 @@ export function saveCustomShortcut(action: ShortcutAction, combo: ShortcutCombo 
   }
   try {
     localStorage.setItem(SHORTCUTS_STORAGE_KEY, JSON.stringify(next));
-  } catch {
-    // Keep runtime behavior usable even when storage is unavailable.
-  }
+  } catch (err) { console.error("[catch] keyboardShortcuts.ts:catch", err); }
   cachedCustomShortcuts = next;
   notifyShortcutsChanged();
 }
@@ -318,9 +316,7 @@ export function saveCustomShortcut(action: ShortcutAction, combo: ShortcutCombo 
 export function resetCustomShortcuts(): void {
   try {
     localStorage.removeItem(SHORTCUTS_STORAGE_KEY);
-  } catch {
-    // Ignore storage failures; the in-memory cache is still reset below.
-  }
+  } catch (err) { console.error("[catch] keyboardShortcuts.ts:catch", err); }
   cachedCustomShortcuts = {};
   notifyShortcutsChanged();
 }

@@ -120,9 +120,7 @@ export function parseReportedPerf(raw: string | null, build: string): Set<string
     const parsed = JSON.parse(raw) as { build?: string; labels?: unknown };
     if (parsed.build !== build || !Array.isArray(parsed.labels)) return new Set();
     return new Set(parsed.labels.filter((label): label is string => typeof label === "string"));
-  } catch {
-    return new Set();
-  }
+  } catch (err) { console.error("[catch] crash.ts:catch", err); return new Set(); }
 }
 
 export function serializeReportedPerf(labels: ReadonlySet<string>, build: string): string {
@@ -134,9 +132,7 @@ function getReportedPerfLabels(): Set<string> {
   let raw: string | null = null;
   try {
     raw = typeof localStorage !== "undefined" ? localStorage.getItem(PERF_REPORTED_STORAGE_KEY) : null;
-  } catch {
-    raw = null;
-  }
+  } catch (err) { console.error("[catch] crash.ts:getReportedPerfLabels", err); raw = null; }
   reportedPerfLabels = parseReportedPerf(raw, currentBuildCommit());
   return reportedPerfLabels;
 }
@@ -149,9 +145,7 @@ function markPerfReported(label: string): void {
     if (typeof localStorage !== "undefined") {
       localStorage.setItem(PERF_REPORTED_STORAGE_KEY, serializeReportedPerf(set, currentBuildCommit()));
     }
-  } catch {
-    // localStorage can throw (private mode / quota); the session-level set still dedups.
-  }
+  } catch (err) { console.error("[catch] crash.ts:catch", err); }
 }
 
 function clip(s: string, n: number): string {
@@ -161,9 +155,7 @@ function clip(s: string, n: number): string {
 function safeStringify(value: unknown): string {
   try {
     return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
+  } catch (err) { console.error("[catch] crash.ts:safeStringify", err); return String(value); }
 }
 
 export function normalizeCrashError(err: unknown): NormalizedError {
@@ -457,9 +449,7 @@ function sendButton(
       await report(payload.kind, JSON.stringify(payload));
       send.textContent = t("crash.sent");
       onSent?.();
-    } catch {
-      send.textContent = t("crash.sendFailed");
-    }
+    } catch (err) { console.error("[catch] crash.ts:sendButton", err); send.textContent = t("crash.sendFailed"); }
   };
   return send;
 }
@@ -665,9 +655,7 @@ export function installPerformancePressureMonitor() {
         inspectLongTasks();
       });
       observer.observe({ entryTypes: ["longtask"] });
-    } catch {
-      // Some WebViews expose PerformanceObserver without the longtask entry type.
-    }
+    } catch (err) { console.error("[catch] crash.ts:catch", err); }
   }
 
   window.setInterval(() => {

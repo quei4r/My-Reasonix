@@ -130,9 +130,7 @@ export function parseTodos(args: string): Todo[] {
   try {
     const a = JSON.parse(args) as { todos?: Todo[] };
     return Array.isArray(a.todos) ? a.todos : [];
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error("[catch] tools.ts:catch", err); return []; }
 }
 
 function plusMinus(original: string, modified: string): { add: number; del: number } {

@@ -91,11 +91,7 @@ function Harness() {
       if (request.seq !== seqRef.current) return;
       updates.push(request.topicId);
       refreshes += 1;
-    } catch {
-      if (request.seq !== seqRef.current) return;
-      toasts.push(request.topicId);
-      refreshes += 1;
-    }
+    } catch (err) { console.error("[catch] catch:", err); }
   }, []);
   openTopic = (topicId: string) => enqueueOpenTopicRequest(
     { seqRef, runningRef, pendingRef },

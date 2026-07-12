@@ -1468,9 +1468,7 @@ function GeneralSection({ s, busy, apply, agentRunning }: SectionProps & { agent
     event.preventDefault();
     try {
       event.currentTarget.releasePointerCapture(event.pointerId);
-    } catch {
-      // Pointer capture may already be released by the browser.
-    }
+    } catch (err) { console.error("[catch] SettingsPanel.tsx:catch", err); return ""; }
     finishStatusBarDrag(event.clientX, event.clientY);
   };
   const cancelStatusBarPointerDrag = (event: PointerEvent<HTMLElement>) => {
@@ -3961,9 +3959,7 @@ function ModelsSection({ s, busy, apply, backgroundApply }: ModelsSectionProps) 
           const visionModels = provider.visionModels.filter((model) => models.includes(model));
           if (sameStringList(provider.models, models) && provider.default === currentDefault && sameStringList(provider.visionModels, visionModels)) continue;
           await app.SaveProvider({ ...provider, models, default: currentDefault, visionModels });
-        } catch {
-          // Background discovery is opportunistic; manual refresh shows errors.
-        }
+        } catch (err) { console.error("[catch] SettingsPanel.tsx:catch", err); }
       }
     });
   }, [backgroundApply, s.providers, subtab, t]);
@@ -5331,9 +5327,7 @@ function providerAccessGroups(providers: ProviderView[], t: ReturnType<typeof us
 function providerBaseHost(baseUrl: string): string {
   try {
     return new URL(baseUrl).hostname.toLowerCase();
-  } catch {
-    return "";
-  }
+  } catch (err) { console.error("[catch] SettingsPanel.tsx:providerBaseHost", err); return ""; }
 }
 
 function canonicalOfficialProviderName(name: string): string {
@@ -6218,9 +6212,7 @@ function HooksSection({ onChanged }: { onChanged: (settings?: SettingsView | nul
     try {
       await navigator.clipboard?.writeText(parsed.text);
       setJsonMessage(t("settings.hooksJsonCopied"));
-    } catch {
-      setJsonMessage(t("settings.hooksJsonClipboardUnavailable"));
-    }
+    } catch (err) { console.error("[catch] SettingsPanel.tsx:catch", err); }
   };
   const formatHooksEditorJSON = (raw = jsonText) => {
     const parsed = parseHooksEditorJSON(raw);
@@ -6246,9 +6238,7 @@ function HooksSection({ onChanged }: { onChanged: (settings?: SettingsView | nul
     try {
       await navigator.clipboard?.writeText(path);
       setPathMessage(t("settings.hooksPathCopied"));
-    } catch {
-      setPathMessage(t("settings.hooksJsonClipboardUnavailable"));
-    }
+    } catch (err) { console.error("[catch] SettingsPanel.tsx:catch", err); }
   };
   const save = async () => {
     setBusy(true);

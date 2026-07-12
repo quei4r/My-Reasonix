@@ -619,9 +619,8 @@ func (a *App) restoreOrBuildTabs() {
 	}
 
 	// In VSCode extension mode, don't restore cached tabs from disk.
-	// SetVSCodeWorkspaceRoot (called by the extension after health check)
-	// will search for existing sessions or create a fresh tab for whatever
-	// workspace the user opened.
+	// The frontend creates a project tab after getting workspace root
+	// from the VSCode extension host via postMessage.
 	if os.Getenv("REASONIX_MODE") == "vscode" {
 		f.Tabs = nil
 	}
@@ -8665,66 +8664,6 @@ func (a *App) ConfirmAction(req NativeConfirmRequest) (bool, error) {
 
 func (a *App) NeedsOnboarding() bool {
 	return !config.CredentialStored(onboardingKeyEnv)
-}
-
-// ConnectKey validates apiKey against the balance endpoint, persists it to
-// Reasonix's global .env, and rebuilds the controller so the new key takes effect.
-// SetVSCodeWorkspaceRoot is called by the VSCode extension host after the
-// backend starts. It chdirs to the given project root, searches for existing
-// sessions in the project workspace, and creates or activates a matching
-// project tab so the extension always reflects the VSCode workspace.
-func (a *App) SetVSCodeWorkspaceRoot(wsRoot string) error {
-	wsRoot = normalizeProjectRoot(wsRoot)
-	if wsRoot == "" {
-		return nil
-	}
-	_ = os.Chdir(wsRoot)
-	_ = addProject(wsRoot, "")
-
-	// Look for an existing project tab matching this root.
-	a.mu.Lock()
-	for _, tab := range a.tabs {
-		if tab.Scope == "project" && sameDesktopPath(tab.WorkspaceRoot, wsRoot) {
-			a.activeTabID = tab.ID
-			a.mu.Unlock()
-			a.emitProjectTreeChanged()
-			return nil
-		}
-	}
-	a.mu.Unlock()
-
-	// Find the most recent session for this project workspace, if any.
-	sessionPath := latestProjectSession(wsRoot)
-
-	// No match — create a new project tab.
-	tab := a.createTabEntry("project", wsRoot, "")
-	if sessionPath != "" {
-		tab.SessionPath = sessionPath
-	}
-	tab.sink = &tabEventSink{tabID: tab.ID, app: a, ctx: a.ctx}
-	a.mu.Lock()
-	a.tabs[tab.ID] = tab
-	a.tabOrder = append(a.tabOrder, tab.ID)
-	a.activeTabID = tab.ID
-	a.mu.Unlock()
-	a.startTabControllerBuild(tab)
-	a.emitProjectTreeChanged()
-	return nil
-}
-
-// latestProjectSession returns the path to the most recently active session
-// file for the given workspace root, or empty string if none exist.
-func latestProjectSession(wsRoot string) string {
-	dir := config.ProjectSessionDir(wsRoot)
-	if dir == "" {
-		return ""
-	}
-	sessions, err := agent.ListSessionOrder(dir)
-	if err != nil || len(sessions) == 0 {
-		return ""
-	}
-	// ListSessionOrder returns sessions sorted by LastActivityAt descending.
-	return sessions[0].Path
 }
 
 // ConnectKey validates apiKey against the balance endpoint, persists it to

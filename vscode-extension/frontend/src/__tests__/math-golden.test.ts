@@ -403,9 +403,7 @@ function katexOf(normalized: string, display: boolean): boolean {
   try {
     katex.renderToString(inner, { throwOnError: true, displayMode: display });
     return true;
-  } catch {
-    return false;
-  }
+  } catch (err) { console.error("[catch] catch:", err); }
 }
 
 const e2e: Array<[string, string]> = [

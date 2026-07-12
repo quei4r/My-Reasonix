@@ -29,6 +29,7 @@ import {
 } from "./heartbeat.bridge";
 import type { HeartbeatTask } from "./heartbeat.types";
 import type { WorkspaceView } from "../../../lib/types";
+import { logCatch } from "../../../lib/logCatch";
 
 const INTERVAL_MS: Record<"s" | "m" | "h", number> = {
   s: 1000,
@@ -193,7 +194,7 @@ export function HeartbeatPanel({ open, onClose, startNew, onOpenTopic }: Heartbe
           notifyChannels: false,
           createdAt: Date.now(),
         });
-      }).catch(() => {});
+      }).catch(logCatch("async"));
     }
   }, [open, startNew]);
 
@@ -202,9 +203,7 @@ export function HeartbeatPanel({ open, onClose, startNew, onOpenTopic }: Heartbe
       setTasks(next);
       try {
         await heartbeatSaveTasks(next);
-      } catch {
-        // ignore
-      }
+      } catch (err) { console.error("[catch] HeartbeatPanel.tsx:catch", err); }
     },
     [],
   );
@@ -223,9 +222,7 @@ export function HeartbeatPanel({ open, onClose, startNew, onOpenTopic }: Heartbe
         notifyChannels: false,
         createdAt: Date.now(),
       });
-    } catch {
-      // ignore
-    }
+    } catch (err) { console.error("[catch] HeartbeatPanel.tsx:catch", err); }
   }, []);
 
   const handleEdit = useCallback((task: HeartbeatTask) => {
@@ -245,9 +242,7 @@ export function HeartbeatPanel({ open, onClose, startNew, onOpenTopic }: Heartbe
       try {
         await heartbeatTriggerNow(id);
         void loadTasks();
-      } catch {
-        // ignore
-      }
+      } catch (err) { console.error("[catch] HeartbeatPanel.tsx:catch", err); }
     },
     [loadTasks],
   );
@@ -846,7 +841,7 @@ function TaskEditor({
 
   useEffect(() => {
     titleRef.current?.focus();
-    app.ListWorkspaces().then((list) => setWorkspaces(list ?? [])).catch(() => {});
+    app.ListWorkspaces().then((list) => setWorkspaces(list ?? [])).catch(logCatch("async"));
   }, []);
 
   useEffect(() => {

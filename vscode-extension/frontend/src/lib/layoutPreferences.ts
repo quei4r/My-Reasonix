@@ -47,9 +47,7 @@ function writePrefs(prefs: LayoutPreferences): void {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ sizes: prefs.sizes ?? {} }));
-  } catch {
-    /* ignore storage failures */
-  }
+  } catch (err) { console.error("[catch] layoutPreferences.ts:catch", err); }
 }
 
 function readLegacySize(key: LayoutSizeKey): number | null {
@@ -58,9 +56,7 @@ function readLegacySize(key: LayoutSizeKey): number | null {
     try {
       const raw = Number(window.localStorage.getItem(legacyKey));
       if (Number.isFinite(raw) && raw > 0) return raw;
-    } catch {
-      /* keep trying other keys */
-    }
+    } catch (err) { console.error("[catch] layoutPreferences.ts:catch", err); }
   }
   return null;
 }

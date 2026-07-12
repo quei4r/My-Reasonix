@@ -392,10 +392,10 @@ function initSharedSSE(): void {
       for (let i = sseSubs.length - 1; i >= 0; i--) {
         if (sseSubs[i].name === msg.name) {
           const payload = Array.isArray(msg.data) ? msg.data : [msg.data];
-          try { sseSubs[i].cb(...payload); } catch { /* subscriber error */ }
+          try { sseSubs[i].cb(...payload); } catch (err) { console.error("[catch] bridge.ts:catch", err); }
         }
       }
-    } catch { /* malformed SSE payload */ }
+    } catch (err) { console.error("[catch] bridge.ts:catch", err); }
   };
 }
 

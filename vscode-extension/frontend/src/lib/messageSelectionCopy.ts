@@ -58,9 +58,7 @@ function rangeIntersectsMessage(range: Range, root: ParentNode): boolean {
   return candidates.some((node) => {
     try {
       return range.intersectsNode(node);
-    } catch {
-      return false;
-    }
+    } catch (err) { console.error("[catch] messageSelectionCopy.ts:catch", err); return false; }
   });
 }
 

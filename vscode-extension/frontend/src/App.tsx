@@ -36,6 +36,7 @@ import { asArray } from "./lib/array";
 import { clearLegacyLangPref, normalizeLangPref, readLegacyLangPref, useI18n, useT, type Translator } from "./lib/i18n";
 import { useController, type Item, type LiveStream } from "./lib/useController";
 import { app, onEvent, onProjectTreeChanged, onSessionRecovered, onSessionRecoveryFailed, onSettingsChanged } from "./lib/bridge";
+import { startVSCodeBridge, requestWorkspaceRoot, sendToExtension, onWorkspaceRootChanged } from "./lib/vscodeBridge";
 import { generativeMusic, isGenerativeMusicEnabled } from "./lib/generative-music";
 import { playSuccessChime } from "./lib/sound";
 import { Transcript } from "./components/Transcript";
@@ -153,6 +154,7 @@ import { useGlobalShortcut } from "./lib/keyboardShortcuts";
 import { topicShortcutIndexFromEvent, useTopicShortcuts, type TopicShortcutEntry } from "./lib/topicShortcuts";
 import { composerDraftKeyForTab } from "./lib/composerDraftKey";
 import logoWordmark from "./assets/logo-wordmark.svg";
+import { logCatch } from "./lib/logCatch";
 
 const HistoryPanel = lazy(() => import("./components/HistoryPanel").then((module) => ({ default: module.HistoryPanel })));
 const SettingsPanel = lazy(() => import("./components/SettingsPanel").then((module) => ({ default: module.SettingsPanel })));
@@ -247,9 +249,7 @@ function loadDismissedTodoKeys(): Set<string> {
     const parsed = JSON.parse(saved) as unknown;
     if (!Array.isArray(parsed)) return new Set();
     return new Set(parsed.filter((value): value is string => typeof value === "string" && value.length > 0));
-  } catch {
-    return new Set();
-  }
+  } catch (err) { console.error("[catch] App.tsx:catch", err); return new Set(); }
 }
 
 function saveDismissedTodoKeys(keys: ReadonlySet<string>): void {
@@ -258,9 +258,7 @@ function saveDismissedTodoKeys(keys: ReadonlySet<string>): void {
       DISMISSED_TODO_STORAGE_KEY,
       JSON.stringify(Array.from(keys).slice(-MAX_DISMISSED_TODO_KEYS)),
     );
-  } catch {
-    /* ignore quota errors */
-  }
+  } catch (err) { console.error("[catch] App.tsx:dismissedTodoKeys", err); }
 }
 
 function isSidebarImConnection(connection: BotConnectionView): boolean {
@@ -850,7 +848,7 @@ function SettingsStandaloneView() {
           const nextStyle = normalizeThemeStyleForTheme(settings.desktopThemeStyle, nextTheme);
           applyTheme(nextTheme, nextStyle, { persist: false });
         });
-      }).catch(() => {}),
+      }).catch(logCatch("async")),
     );
   }, []);
 
@@ -967,11 +965,11 @@ export default function App() {
     try {
       const saved = localStorage.getItem("projectTree:timeFilter");
       if (saved === "all" || saved === "10" || saved === "20" || saved === "1h" || saved === "3h" || saved === "5h" || saved === "1d") return saved;
-    } catch { /* localStorage unavailable */ }
+    } catch (err) { console.error("[catch] App.tsx:catch", err); }
     return "all";
   });
   useEffect(() => {
-    try { localStorage.setItem("projectTree:timeFilter", topicTimeFilter); } catch { /* ignore */ }
+    try { localStorage.setItem("projectTree:timeFilter", topicTimeFilter); } catch (err) { console.error("[catch] App.tsx:catch", err); }
   }, [topicTimeFilter]);
   const sidebarWidth = useLayoutStore((s) => s.sidebarWidth);
   const setSidebarWidth = useLayoutStore((s) => s.setSidebarWidth);
@@ -1165,7 +1163,7 @@ export default function App() {
       setProjectRevision((v) => v + 1);
       void app.DesktopStartupSettings().then((settings) => {
         if (settings) applyDesktopPreferences(settings);
-      }).catch(() => {});
+      }).catch(logCatch("async"));
     });
   }, [applyDesktopPreferences]);
 
@@ -1379,7 +1377,7 @@ export default function App() {
   const syncModeToController = useCallback((m: Mode) => setControllerMode(m), [setControllerMode]);
 
   useEffect(() => {
-    void app.SetTrayLocale(locale).catch(() => {});
+    void app.SetTrayLocale(locale).catch(logCatch("async"));
   }, [locale]);
 
   // applyMode is the single source of truth for the input mode: it updates the
@@ -1801,23 +1799,40 @@ export default function App() {
     return { scope, workspaceRoot: activeWorkspaceRoot };
   }, [activeTab?.scope, activeTab?.workspaceRoot]);
 
+  // Initialize VSCode bridge and sync workspace root on mount.
   useEffect(() => {
-    void refreshTabMetas();
-    const id = window.setInterval(() => void refreshTabMetas(), 2000);
-    return () => window.clearInterval(id);
-  }, [refreshTabMetas]);
+    startVSCodeBridge();
+    (async () => {
+      const root = await requestWorkspaceRoot();
+      console.log("[vscode-bridge] workspace root from extension:", root);
+      if (root) {
+        await app.OpenProjectTab(root, "").catch((err) => {
+          console.error("[vscode-bridge] OpenProjectTab failed:", root, err instanceof Error ? err.stack || err.message : String(err));
+        });
+        // Sync active tab after opening project tab, so syncActiveTabFromBackend's
+        // ListTabs() picks up the project tab rather than the initial global tab.
+        await syncActiveTab(false);
+      } else {
+        console.warn("[vscode-bridge] no workspace root, staying on global tab");
+        void refreshTabMetas();
+      }
+    })();
+    return onWorkspaceRootChanged((root) => {
+      console.log("[vscode-bridge] workspace root changed:", root);
+      if (root) {
+        void app.OpenProjectTab(root, "").catch((err) => {
+          console.error("[vscode-bridge] OpenProjectTab on change failed:", root, err instanceof Error ? err.stack || err.message : String(err));
+        }).then(() => syncActiveTab(false));
+      }
+    });
+  }, [refreshTabMetas, syncActiveTab]);
 
   useEffect(() => {
     return onProjectTreeChanged(() => {
       setProjectRevision((value) => value + 1);
-      void refreshTabMetas().then((tabs) => {
-        const backendActive = tabs.find((tab) => tab.active);
-        if (backendActive && backendActive.id !== activeTabId) {
-          void syncActiveTab(false);
-        }
-      });
+      void refreshTabMetas();
     });
-  }, [refreshTabMetas, syncActiveTab, activeTabId]);
+  }, [refreshTabMetas]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1825,11 +1840,7 @@ export default function App() {
       try {
         const needs = await app.NeedsOnboarding();
         if (!cancelled) setNeedsOnboarding(needs);
-      } catch {
-        // Bridge unavailable (browser dev seam) — skip the gate; a real key
-        // failure still surfaces via the topbar startupError banner.
-        if (!cancelled) setNeedsOnboarding(false);
-      }
+      } catch (err) { console.error("[catch] App.tsx:catch", err); }
     })();
     return () => {
       cancelled = true;
@@ -2401,9 +2412,7 @@ export default function App() {
     try {
       await sendToTab(sourceTabId, next, submit, original);
       return true;
-    } catch {
-      return false;
-    }
+    } catch (err) { console.error("[catch] App.tsx:handleEditPrompt", err); return false; }
   }, [activeTab?.readOnly, activeTabId, clearContextPending, controllerReady, hydratePlaceholderActive, sendToTab, state.approval, state.ask, state.items, state.messageAction, state.running, rewind]);
 
   // History drawer: project menus can open a scoped saved-session list. Idle row
@@ -2426,7 +2435,7 @@ export default function App() {
     setHistView(null);
   }, [closeTransientOverlays]);
   const refreshHistoryView = useCallback(async () => {
-    const sessions = await listSessions().catch(() => null);
+    const sessions = await listSessions().catch(logCatch("async", null));
     if (!sessions) return;
     setHistView((cur) =>
       cur === null || cur.kind !== "history"
@@ -2629,7 +2638,7 @@ export default function App() {
   const openPalette = useCallback(async () => {
     closeTransientOverlays();
     setPaletteOpen(true);
-    setPaletteSessions(await listSessions().catch(() => []));
+    setPaletteSessions(await listSessions().catch(logCatch("async", [])));
   }, [closeTransientOverlays, listSessions]);
   useGlobalShortcut("commandPalette.open", () => {
     setPaletteOpen((current) => {
@@ -2709,10 +2718,7 @@ export default function App() {
       if (state.running) return;
       try {
         await deleteSession(path);
-      } catch {
-        await refreshHistoryView();
-        return;
-      }
+      } catch (err) { console.error("[catch] App.tsx:catch", err); }
       // Local state removal: filter the deleted session out of the current
       // history view instead of re-fetching the full list from the backend.
       setHistView((cur) =>
@@ -2827,9 +2833,7 @@ export default function App() {
     if (!nextTitle) return;
     try {
       await renameTopic(topicId, nextTitle);
-    } catch {
-      /* keep the app usable if a stale topic cannot be renamed */
-    }
+    } catch (err) { console.error("[catch] App.tsx:catch", err); }
   }, [renameTopic, renamingTopicId, topicTitleDraft]);
 
   const sidebarExpandBlocked = false;
@@ -3315,10 +3319,10 @@ export default function App() {
                                 onClick={async (e) => {
                                   e.stopPropagation();
                                   if (historyDropdownMode === "trash") {
-                                    try { await restoreSession(session.path); setHistoryDropdownSessions((cur) => cur.filter((s) => s.path !== session.path)); } catch {}
+                                    try { await restoreSession(session.path); setHistoryDropdownSessions((cur) => cur.filter((s) => s.path !== session.path)); } catch (err) { console.error("[catch] App.tsx:catch", err); }
                                   } else {
                                     if (state.running) return;
-                                    try { await deleteSession(session.path); setHistoryDropdownSessions((cur) => cur.filter((s) => s.path !== session.path)); } catch {}
+                                    try { await deleteSession(session.path); setHistoryDropdownSessions((cur) => cur.filter((s) => s.path !== session.path)); } catch (err) { console.error("[catch] App.tsx:catch", err); }
                                   }
                                 }}
                               >
@@ -3368,7 +3372,7 @@ export default function App() {
                   onClick={() => {
                     closeTransientOverlays();
                     setTopicExportOpen(false);
-                    try { window.parent.postMessage({ command: "openSettings" }, "*"); } catch {}
+                    try { sendToExtension("openSettings"); } catch (err) { console.error("[catch] App.tsx:catch", err); }
                   }}
                 >
                   <SettingsIcon size={14} />

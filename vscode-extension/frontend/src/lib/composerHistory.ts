@@ -132,9 +132,7 @@ export async function loadOlder(): Promise<PromptHistoryEntry[]> {
       cachedEntries = cachedEntries.concat(entries);
     }
     return entries.slice();
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error("[catch] composerHistory.ts:catch", err); return []; }
 }
 
 export function hasMoreOlder(): boolean {

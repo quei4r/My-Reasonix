@@ -129,9 +129,7 @@ export function readLegacyThemePreference(): { theme: Theme; style: ThemeStyle; 
   if (rawTheme) {
     try {
       theme = normalizeThemePreference(JSON.parse(rawTheme) as unknown);
-    } catch {
-      theme = normalizeThemePreference(rawTheme);
-    }
+    } catch (err) { console.error("[catch] theme.ts:catch", err); }
   }
   const style = normalizeThemeStyleForTheme(rawStyle ?? undefined, theme);
   return { theme, style, hasValue };
@@ -141,9 +139,7 @@ export function clearLegacyThemePreference(): void {
   try {
     localStorage.removeItem(THEME_KEY);
     localStorage.removeItem(STYLE_KEY);
-  } catch {
-    /* ignore storage failures */
-  }
+  } catch (err) { console.error("[catch] theme.ts:catch", err); }
 }
 
 // initTheme runs before React mounts. It applies the saved theme to the DOM.

@@ -29,6 +29,7 @@ import { ComposerContextCard } from "./ComposerContextCard";
 import { ImageViewer } from "./ImageViewer";
 import { VirtualMenu } from "./VirtualMenu";
 import { dirEntryMenuLabel, dirEntrySubmitPath } from "./FileReferenceMenu";
+import { logCatch } from "../lib/logCatch";
 
 interface Attachment {
   path: string;
@@ -245,9 +246,7 @@ async function dataURLHash(dataUrl: string): Promise<string> {
   try {
     const res = await fetch(dataUrl);
     return sha256(await res.blob());
-  } catch {
-    return "";
-  }
+  } catch (err) { console.error("[catch] Composer.tsx:catch", err); return ""; }
 }
 
 function composerMaxHeight(): number {
@@ -687,7 +686,7 @@ export function Composer({
   // --- slash commands (whole-input "/token") ---
   const [commands, setCommands] = useState<CommandInfo[]>([]);
   useEffect(() => {
-    app.Commands().then((next) => setCommands(asArray(next))).catch(() => {});
+    app.Commands().then((next) => setCommands(asArray(next))).catch(logCatch("async"));
   }, [ready, cwd, running]);
 
   const slashQuery = useMemo(() => {
@@ -731,7 +730,7 @@ export function Composer({
           setArgRes(useful.length > 0 ? { items: useful, from } : null);
           setActive(0);
         })
-        .catch(() => {});
+        .catch(logCatch("async"));
     }, 120);
     return () => {
       live = false;
@@ -811,7 +810,7 @@ export function Composer({
         dirCache.current[atDir] = list;
         setEntries(list);
       })
-      .catch(() => {});
+      .catch(logCatch("async"));
     return () => {
       live = false;
     };
@@ -839,7 +838,7 @@ export function Composer({
         searchCache.current[atFrag] = { entries: list, cachedAt: Date.now() };
         setSearchEntries(list);
       })
-      .catch(() => {});
+      .catch(logCatch("async"));
     return () => {
       live = false;
     };

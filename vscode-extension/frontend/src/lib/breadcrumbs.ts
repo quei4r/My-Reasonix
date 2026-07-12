@@ -28,9 +28,7 @@ function stringifyArg(a: unknown): string {
   if (a instanceof Error) return a.message;
   try {
     return JSON.stringify(a);
-  } catch {
-    return String(a);
-  }
+  } catch (err) { console.error("[catch] breadcrumbs.ts:catch", err); return String(a); }
 }
 
 export function installBreadcrumbConsoleHook(): void {

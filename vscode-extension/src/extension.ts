@@ -7,6 +7,9 @@ const DEFAULT_PORT = 18765;
 const BINARY_NAME = "my-reasonix";
 
 let backendProcess: ChildProcess | null = null;
+// Sidebar webview reference, set when the webview is resolved.
+// Used to push workspace root changes from onDidChangeWorkspaceFolders.
+let sidebarWebview: vscode.Webview | null = null;
 
 function resolveProjectRoot(): string | undefined {
 	const wsFolders = vscode.workspace.workspaceFolders;
@@ -90,11 +93,6 @@ export function activate(context: vscode.ExtensionContext) {
 	const port = DEFAULT_PORT;
 	const binaryPath = findBinary(context.extensionPath, context.extensionMode === vscode.ExtensionMode.Development);
 
-	// Use the VSCode workspace folder (or active file's project root) as the
-	// backend's working directory so that file operations resolve to the project
-	// the user opened, not the extension host's default (e.g. ~ in WSL Remote).
-	const workspaceRoot = resolveProjectRoot();
-
 	// In dev mode, kill any stale backend on our port so the newly-built binary
 	// starts fresh (otherwise the old backend still serves the old frontend).
 	if (context.extensionMode === vscode.ExtensionMode.Development) {
@@ -104,9 +102,11 @@ export function activate(context: vscode.ExtensionContext) {
 		} catch { /* fuser unavailable or nothing to kill */ }
 	}
 
-	// Start the Go backend
+	// Start the Go backend with the workspace folder as cwd so that file
+	// operations resolve to the project the user opened.
+	const wsRoot = resolveProjectRoot();
 	backendProcess = spawn(binaryPath, [], {
-		cwd: workspaceRoot,
+		cwd: wsRoot,
 		env: {
 			...process.env,
 			MY_REASONIX_ADDR: `127.0.0.1:${port}`,
@@ -126,33 +126,10 @@ export function activate(context: vscode.ExtensionContext) {
 		backendProcess = null;
 	});
 
-	// Wait for backend to start, then register the webview provider
-	// Helper: tell the backend which folder VSCode has open.
-	function setWorkspaceRoot(p: number, path: string | undefined) {
-		if (!path) return;
-		fetch(`http://127.0.0.1:${p}/api/call/SetVSCodeWorkspaceRoot`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify([path]),
-		}).then(() => console.log("[my-reasonix] workspace root set to", path))
-		.catch((e) => console.error("[my-reasonix] failed to set workspace root", e));
-	}
-
-	waitForHealth(port)
-		.then(async () => {
-			// After backend starts, set workspace root to match VSCode current folder or active file.
-			setWorkspaceRoot(port, resolveProjectRoot());
-
-			// Also re-apply when workspace folders change (open/close a folder).
-			context.subscriptions.push(
-				vscode.workspace.onDidChangeWorkspaceFolders(() => {
-						const f = vscode.workspace.workspaceFolders;
-						setWorkspaceRoot(port, f && f.length > 0 ? f[0].uri.fsPath : resolveProjectRoot());
-				}),
-			);
-
-			console.log("[my-reasonix] ready");
-		});
+	// Wait for the backend HTTP server to be healthy, then signal ready.
+	waitForHealth(port).then(() => {
+		console.log("[my-reasonix] ready");
+	});
 
 	// Helper: open a webview panel in the editor area for settings.
 	let settingsPanel: vscode.WebviewPanel | undefined;
@@ -189,6 +166,8 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider("reasonix.sidebarPanel", {
 			resolveWebviewView(webviewView) {
+				sidebarWebview = webviewView.webview;
+				webviewView.onDidDispose(() => { sidebarWebview = null; });
 				webviewView.webview.options = {
 					enableScripts: true,
 				};
@@ -208,18 +187,48 @@ export function activate(context: vscode.ExtensionContext) {
 	<script>
 		const iframe = document.getElementById("app");
 		const vscode = acquireVsCodeApi();
-		window.addEventListener("message", (e) => {
-			if (e.source === iframe.contentWindow) {
-				vscode.postMessage(e.data);
-			}
-		});
+
+			// VSCode → iframe: forward messages not from the iframe
+			window.addEventListener("message", (e) => {
+				if (e.source !== iframe.contentWindow) {
+					iframe.contentWindow.postMessage({ source: "vscode-extension", ...e.data }, "*");
+				}
+			});
+
+			// iframe → VSCode: forward messages from the iframe
+			window.addEventListener("message", (e) => {
+				if (e.source === iframe.contentWindow) {
+					vscode.postMessage(e.data);
+				}
+			});
 	</script>
 </body>
 </html>`;
 				webviewView.webview.onDidReceiveMessage((msg) => {
-					if (msg.command === "openSettings") openSettingsPanel();
+					if (msg.command === "openSettings") {
+						openSettingsPanel();
+					} else if (msg.command === "getWorkspaceRoot") {
+						const root = resolveProjectRoot();
+						console.log("[my-reasonix] getWorkspaceRoot responding with:", root);
+						webviewView.webview.postMessage({
+							type: "workspace-root",
+							path: root,
+						});
+					}
 				});
 			},
+		}),
+	);
+
+	// Push workspace folder changes to the frontend.
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeWorkspaceFolders(() => {
+			if (!sidebarWebview) return;
+			const root = resolveProjectRoot();
+			sidebarWebview.postMessage({
+				type: "workspace-root",
+				path: root,
+			});
 		}),
 	);
 }

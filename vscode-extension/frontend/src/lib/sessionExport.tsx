@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { highlightToHtml } from "./highlight";
 import { normalizeMath } from "../components/mathNormalize";
+import { logCatch } from "../lib/logCatch";
 
 const EXPORT_WIDTH = 920;
 const MAX_CANVAS_SIDE = 16384;
@@ -257,7 +258,7 @@ async function renderExportSurface(markdown: string): Promise<RenderedExport> {
 
   await nextFrame();
   await nextFrame();
-  await document.fonts?.ready.catch(() => undefined);
+  await document.fonts?.ready.catch(logCatch("async", undefined));
   await nextFrame();
 
   const surface = host.querySelector<HTMLElement>(".session-export-page");

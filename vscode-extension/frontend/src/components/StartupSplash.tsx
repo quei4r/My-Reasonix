@@ -10,17 +10,13 @@ const MAX_HOLD_MS = 6000;
 export function shouldShowStartupSplash(): boolean {
   try {
     return window.sessionStorage.getItem(SPLASH_FLAG) !== "1";
-  } catch {
-    return true;
-  }
+  } catch (err) { console.error("[catch] StartupSplash.tsx:catch", err); return true; }
 }
 
 function markSplashShown(): void {
   try {
     window.sessionStorage.setItem(SPLASH_FLAG, "1");
-  } catch {
-    /* sessionStorage unavailable */
-  }
+  } catch (err) { console.error("[catch] StartupSplash.tsx:catch", err); }
 }
 
 export function StartupSplash({ hold, onDone }: { hold: boolean; onDone: () => void }) {

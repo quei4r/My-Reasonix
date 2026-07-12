@@ -9,6 +9,7 @@ import { InlineConfirmButton } from "./InlineConfirmButton";
 import { ResizableDrawer } from "./ResizableDrawer";
 import { Tooltip } from "./Tooltip";
 import { ModalCloseButton } from "./ModalCloseButton";
+import { logCatch } from "../lib/logCatch";
 
 // CapabilitiesPanel is the desktop MCP & Skills drawer — the GUI counterpart to
 // the CLI's /mcp + /skill, aligning with Claude Code's Customize → Connectors:
@@ -1636,8 +1637,8 @@ export function PluginsSettingsPage() {
 
 	const reload = useCallback(async () => {
 		const [meta, tabs] = await Promise.all([
-			app.Meta().catch(() => null),
-			app.ListTabs().catch(() => []),
+			app.Meta().catch(logCatch("async", null)),
+			app.ListTabs().catch(logCatch("all", [])),
 		]);
 		const key = settingsSnapshotKey(meta, tabs);
 		setSnapshotKey(key);
@@ -1647,7 +1648,7 @@ export function PluginsSettingsPage() {
 		} else {
 			setPlugins(null);
 		}
-		const next = normalizePluginViews(await app.Plugins().catch(() => []));
+		const next = normalizePluginViews(await app.Plugins().catch(logCatch("async", [])));
 		pluginsSettingsSnapshot = { key, value: next };
 		setPlugins(next);
 	}, []);
@@ -2221,8 +2222,8 @@ export function MCPServersSettingsPage() {
 
 	const reload = useCallback(async () => {
 		const [meta, tabs] = await Promise.all([
-			app.Meta().catch(() => null),
-			app.ListTabs().catch(() => []),
+			app.Meta().catch(logCatch("async", null)),
+			app.ListTabs().catch(logCatch("all", [])),
 		]);
 		const key = settingsSnapshotKey(meta, tabs);
 		setSnapshotKey(key);
@@ -2232,7 +2233,7 @@ export function MCPServersSettingsPage() {
 		} else {
 			setServers(null);
 		}
-		const next = normalizeServerViews(await app.MCPServers().catch(() => []));
+		const next = normalizeServerViews(await app.MCPServers().catch(logCatch("async", [])));
 		mcpSettingsSnapshot = { key, value: next };
 		setServers(next);
 	}, []);
@@ -2375,8 +2376,8 @@ export function SkillsSettingsPage() {
 
 	const reload = useCallback(async () => {
 		const [meta, tabs] = await Promise.all([
-			app.Meta().catch(() => null),
-			app.ListTabs().catch(() => []),
+			app.Meta().catch(logCatch("async", null)),
+			app.ListTabs().catch(logCatch("all", [])),
 		]);
 		const key = settingsSnapshotKey(meta, tabs);
 		setSnapshotKey(key);

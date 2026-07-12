@@ -37,9 +37,7 @@ function isoCurrencyCode(currency?: string): string | null {
   try {
     new Intl.NumberFormat("en", { style: "currency", currency: code }).format(0);
     return code;
-  } catch {
-    return null;
-  }
+  } catch (err) { console.error("[catch] money.ts:catch", err); return null; }
 }
 
 export function formatMoneyLocalized(amount?: number, currency?: string, options: MoneyFormatOptions = {}): string {

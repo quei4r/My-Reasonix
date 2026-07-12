@@ -330,9 +330,7 @@ export function ContextPanel({
       if (refreshSeq.current === seq) {
         setInfo(next);
       }
-    } catch {
-      /* bridge unavailable */
-    }
+    } catch (err) { console.error("[catch] ContextPanel.tsx:catch", err); }
   }, [tabId]);
 
   useEffect(() => {

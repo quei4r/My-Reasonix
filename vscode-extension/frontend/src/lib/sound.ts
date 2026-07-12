@@ -54,9 +54,7 @@ async function loadBuffer(ctx: AudioContext, url: string): Promise<AudioBuffer |
     const decoded = await ctx.decodeAudioData(arrayBuffer);
     audioBufferCache.set(url, decoded);
     return decoded;
-  } catch {
-    return null;
-  }
+  } catch (err) { console.error("[catch] sound.ts:catch", err); return null; }
 }
 
 function playBuffer(ctx: AudioContext, buffer: AudioBuffer, volume: number): void {
@@ -121,9 +119,7 @@ async function playWav(pref: SoundWavPref, volume: number, fallback: (ctx: Audio
     } else {
       fallback(ctx);
     }
-  } catch {
-    fallback(ctx);
-  }
+  } catch (err) { console.error("[catch] sound.ts:catch", err); }
   setTimeout(() => ctx.close(), 2000);
 }
 
@@ -137,7 +133,7 @@ export function playSuccessChime(): void {
       const ctx = new AudioContext();
       playSynthSuccess(ctx);
       setTimeout(() => ctx.close(), 600);
-    } catch { /* silent */ }
+    } catch (err) { console.error("[catch] sound.ts:catch", err); }
   } else {
     void playWav(pref, 0.35, playSynthSuccess);
   }
@@ -151,7 +147,7 @@ export function playAttentionChime(): void {
       const ctx = new AudioContext();
       playSynthAttention(ctx);
       setTimeout(() => ctx.close(), 500);
-    } catch { /* silent */ }
+    } catch (err) { console.error("[catch] sound.ts:catch", err); }
   } else {
     void playWav(pref, 0.25, playSynthAttention);
   }

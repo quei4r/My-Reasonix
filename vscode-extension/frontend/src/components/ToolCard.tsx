@@ -9,6 +9,7 @@ import { useGSAPCollapse } from "../lib/useGSAPCollapse";
 import type { Item } from "../lib/useController";
 import { isReadOnlyTool } from "../lib/useController";
 import { ReadOnlyBatch } from "./ReadOnlyBatch";
+import { logCatch } from "../lib/logCatch";
 
 type ToolItem = Extract<Item, { kind: "tool" }>;
 
@@ -20,9 +21,7 @@ const SHELL_PREVIEW_LINES = 10;
 function pretty(json: string): string {
   try {
     return JSON.stringify(JSON.parse(json), null, 2);
-  } catch {
-    return json;
-  }
+  } catch (err) { console.error("[catch] ToolCard.tsx:catch", err); return json; }
 }
 
 function formatToolDuration(ms?: number): string {
@@ -90,8 +89,8 @@ export const ToolCard = memo(function ToolCard({ item, subcalls, tabId, displayN
     import("../lib/bridge").then(({ app }) =>
       app.ToolResultForTab(tabId, item.id).then((d) => {
         if (!cancelled && d) setFullData(d);
-      }).catch(() => {}),
-    ).catch(() => {});
+      }).catch(logCatch("async")),
+    ).catch(logCatch("async"));
     return () => { cancelled = true; };
   }, [open, item.id, item.dataArchived, fullData, tabId]);
 

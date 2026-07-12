@@ -43,17 +43,13 @@ export function getCustomMonoFontName(): string {
 export function setCustomFontName(name: string): void {
   try {
     localStorage.setItem(CUSTOM_FONT_KEY, name);
-  } catch {
-    /* private mode / no storage */
-  }
+  } catch (err) { console.error("[catch] fontFamily.ts:catch", err); }
 }
 
 export function setCustomMonoFontName(name: string): void {
   try {
     localStorage.setItem(CUSTOM_MONO_FONT_KEY, name);
-  } catch {
-    /* private mode / no storage */
-  }
+  } catch (err) { console.error("[catch] fontFamily.ts:catch", err); }
 }
 
 export function applyFontFamily(font: FontFamily): void {
@@ -74,9 +70,7 @@ export function applyFontFamily(font: FontFamily): void {
   }
   try {
     localStorage.setItem(FONT_FAMILY_KEY, font);
-  } catch {
-    /* private mode / no storage */
-  }
+  } catch (err) { console.error("[catch] fontFamily.ts:catch", err); }
 }
 
 export function applyMonoFontFamily(font: MonoFontFamily): void {
@@ -97,9 +91,7 @@ export function applyMonoFontFamily(font: MonoFontFamily): void {
   }
   try {
     localStorage.setItem(MONO_FONT_FAMILY_KEY, font);
-  } catch {
-    /* private mode / no storage */
-  }
+  } catch (err) { console.error("[catch] fontFamily.ts:catch", err); }
 }
 
 export function initFontFamily(): void {

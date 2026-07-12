@@ -16,6 +16,7 @@ import { topicShortcutLabel, type TopicShortcutEntry } from "../lib/topicShortcu
 import type { ShortcutPlatform } from "../lib/keyboardShortcuts";
 import { ContextMenu, contextMenuPointFromEvent, type ContextMenuItem, type ContextMenuPoint } from "./ContextMenu";
 import { Tooltip } from "./Tooltip";
+import { logCatch } from "../lib/logCatch";
 
 interface ProjectTreeProps {
   activeScope?: string;
@@ -288,18 +289,14 @@ function loadReadActivity(): ProjectTreeReadActivity {
 function saveReadActivity(readActivity: ProjectTreeReadActivity) {
   try {
     localStorage.setItem(READ_ACTIVITY_KEY, JSON.stringify(readActivity));
-  } catch {
-    /* localStorage unavailable */
-  }
+  } catch (err) { console.error("[catch] ProjectTree.tsx:catch", err); }
 }
 
 function loadWorkbenchOrganizeMode(): WorkbenchOrganizeMode {
   try {
     const value = localStorage.getItem(WORKBENCH_ORGANIZE_KEY);
     if (value === "recent" || value === "time") return value;
-  } catch {
-    /* localStorage unavailable */
-  }
+  } catch (err) { console.error("[catch] ProjectTree.tsx:catch", err); }
   return "project";
 }
 
@@ -307,9 +304,7 @@ function loadWorkbenchSortMode(): WorkbenchSortMode {
   try {
     const value = localStorage.getItem(WORKBENCH_SORT_KEY);
     if (value === "created") return "created";
-  } catch {
-    /* localStorage unavailable */
-  }
+  } catch (err) { console.error("[catch] ProjectTree.tsx:catch", err); }
   return "updated";
 }
 
@@ -609,9 +604,7 @@ export function ProjectTree({
         }
         return next;
       });
-    } catch {
-      /* bridge unavailable */
-    }
+    } catch (err) { console.error("[catch] ProjectTree.tsx:catch", err); }
   }, [activeScope, activeWorkspaceRoot, activeTopicId, activeSessionPath]);
 
   useEffect(() => {
@@ -645,9 +638,7 @@ export function ProjectTree({
     if (tree.length === 0) return;
     try {
       if (localStorage.getItem(READ_ACTIVITY_INIT_KEY)) return;
-    } catch {
-      return;
-    }
+    } catch (err) { console.error("[catch] ProjectTree.tsx:catch", err); }
     const baseline: ProjectTreeReadActivity = {};
     const collectBaseline = (nodes: ProjectNode[]) => {
       for (const node of nodes) {
@@ -662,9 +653,7 @@ export function ProjectTree({
     collectBaseline(tree);
     try {
       localStorage.setItem(READ_ACTIVITY_INIT_KEY, "1");
-    } catch {
-      /* localStorage unavailable */
-    }
+    } catch (err) { console.error("[catch] ProjectTree.tsx:catch", err); }
     if (Object.keys(baseline).length === 0) return;
     setReadActivity((prev) => {
       const next = { ...prev };
@@ -693,24 +682,20 @@ export function ProjectTree({
   useEffect(() => {
     try {
       localStorage.setItem(WORKBENCH_ORGANIZE_KEY, workbenchOrganizeMode);
-    } catch {
-      /* ignore */
-    }
+    } catch (err) { console.error("[catch] ProjectTree.tsx:catch", err); }
   }, [workbenchOrganizeMode]);
 
   useEffect(() => {
     try {
       localStorage.setItem(WORKBENCH_SORT_KEY, workbenchSortMode);
-    } catch {
-      /* ignore */
-    }
+    } catch (err) { console.error("[catch] ProjectTree.tsx:catch", err); }
   }, [workbenchSortMode]);
 
   useEffect(() => {
     let cancelled = false;
     void app.Platform().then((value) => {
       if (!cancelled) setPlatform(value);
-    }).catch(() => {});
+    }).catch(logCatch("async"));
     return () => {
       cancelled = true;
     };
@@ -972,9 +957,7 @@ export function ProjectTree({
     if (!path) return;
     try {
       await navigator.clipboard?.writeText(path);
-    } catch {
-      /* ignore */
-    }
+    } catch (err) { console.error("[catch] ProjectTree.tsx:catch", err); }
   };
 
   const removeProject = async (path: string) => {
@@ -997,9 +980,7 @@ export function ProjectTree({
       setMenuPoint(null);
       await refresh();
       await onTopicsChanged?.();
-    } catch {
-      /* ignore */
-    }
+    } catch (err) { console.error("[catch] ProjectTree.tsx:catch", err); }
   };
 
   const visibleTree = useMemo(() => {
@@ -1075,9 +1056,7 @@ export function ProjectTree({
       await app.ReorderProjects(nextRoots);
       await refresh();
       await onTopicsChanged?.();
-    } catch {
-      await refresh();
-    }
+    } catch (err) { console.error("[catch] ProjectTree.tsx:catch", err); }
   }, [onTopicsChanged, refresh, tree]);
 
   const clearProjectDrag = useCallback(() => {
@@ -1466,7 +1445,7 @@ export function ProjectTree({
         label: t(revealLabelKey(platform)),
         disabled: !projectPath,
         onSelect: () => {
-          void app.RevealPath(projectPath).catch(() => {});
+          void app.RevealPath(projectPath).catch(logCatch("async"));
           closeMenu();
         },
       },
@@ -1515,7 +1494,7 @@ export function ProjectTree({
         label: t(revealLabelKey(platform)),
         disabled: !projectPath,
         onSelect: () => {
-          void app.RevealPath(projectPath).catch(() => {});
+          void app.RevealPath(projectPath).catch(logCatch("async"));
           closeMenu();
         },
       },

@@ -5,6 +5,7 @@ import { filterAtMatches } from "../lib/atMatches";
 import { app } from "../lib/bridge";
 import type { DirEntry } from "../lib/types";
 import { VirtualMenu } from "./VirtualMenu";
+import { logCatch } from "../lib/logCatch";
 
 const FILE_REF_SEARCH_CACHE_TTL_MS = 5000;
 
@@ -101,7 +102,7 @@ export function useFileReferenceMenu(text: string, cwd?: string) {
         dirCache.current[atDir] = list;
         setEntries(list);
       })
-      .catch(() => {});
+      .catch(logCatch("async"));
     return () => {
       live = false;
     };
@@ -128,7 +129,7 @@ export function useFileReferenceMenu(text: string, cwd?: string) {
         searchCache.current[atFrag] = { entries: list, cachedAt: Date.now() };
         setSearchEntries(list);
       })
-      .catch(() => {});
+      .catch(logCatch("async"));
     return () => {
       live = false;
     };

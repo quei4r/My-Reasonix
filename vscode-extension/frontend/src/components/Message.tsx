@@ -18,6 +18,7 @@ import { stripMemoryCompilerExecution } from "../lib/memoryCompilerDisplay";
 import { visibleTranscriptMemoryCitations } from "../lib/memoryCitationVisibility";
 import type { Item, MessageActionScope } from "../lib/useController";
 import type { CheckpointMeta, MemoryCitation } from "../lib/types";
+import { logCatch } from "../lib/logCatch";
 
 type AssistantItem = Extract<Item, { kind: "assistant" }>;
 export type TurnActionMenu = "summary" | "rewind";
@@ -214,9 +215,7 @@ export function UserMessage({
       try {
         url = await app.AttachmentDataURL(path);
         setImagePreviews((prev) => (prev[path] ? prev : { ...prev, [path]: url }));
-      } catch {
-        return;
-      }
+      } catch (err) { console.error("[catch] Message.tsx:catch", err); }
     }
     setImageViewer({ open: true, url, name });
   }, [imagePreviews]);
@@ -362,7 +361,7 @@ export function UserMessage({
           if (cancelled) return;
           setImagePreviews((prev) => (prev[path] ? prev : { ...prev, [path]: url }));
         })
-        .catch(() => {});
+        .catch(logCatch("async"));
     }
     return () => {
       cancelled = true;

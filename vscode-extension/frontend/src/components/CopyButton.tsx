@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { useT } from "../lib/i18n";
+import { logCatch } from "../lib/logCatch";
 
 function fallbackCopyText(value: string): boolean {
   const activeElement = document.activeElement;
@@ -39,14 +40,10 @@ async function writeClipboardText(value: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(value);
     return;
-  } catch {
-    /* try the desktop runtime below */
-  }
+  } catch (err) { console.error("[catch] CopyButton.tsx:catch", err); }
   try {
     if (typeof window !== "undefined" && (await window.runtime?.ClipboardSetText?.(value))) return;
-  } catch {
-    /* runtime unavailable in browser dev */
-  }
+  } catch (err) { console.error("[catch] CopyButton.tsx:catch", err); }
   if (fallbackCopyText(value)) return;
   throw new Error("clipboard unavailable");
 }
@@ -82,16 +79,14 @@ export function CopyButton({
   const copy = async () => {
     try {
       const value = getText ? await getText() : text ?? "";
-      void writeClipboardText(value).catch(() => {});
+      void writeClipboardText(value).catch(logCatch("async"));
       setCopied(true);
       if (timerRef.current != null) window.clearTimeout(timerRef.current);
       timerRef.current = window.setTimeout(() => {
         setCopied(false);
         timerRef.current = null;
       }, 1200);
-    } catch {
-      /* clipboard unavailable */
-    }
+    } catch (err) { console.error("[catch] CopyButton.tsx:catch", err); }
   };
   return (
     <button

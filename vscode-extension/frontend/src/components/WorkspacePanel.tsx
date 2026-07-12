@@ -49,6 +49,7 @@ import { FloatingMenu, FloatingMenuItems } from "./FloatingMenu";
 import { Markdown } from "./Markdown";
 import { Tooltip } from "./Tooltip";
 import { AnchoredPopover } from "./AnchoredPopover";
+import { logCatch } from "../lib/logCatch";
 
 const WORKSPACE_TREE_MIN_WIDTH = 140;
 const WORKSPACE_TREE_DEFAULT_WIDTH = 300;
@@ -1068,15 +1069,13 @@ export function WorkspacePanel({
       }
       const suffix = file.truncated ? `\n\n${t("workspace.truncated")}` : "";
       onAddToChat?.(formatSelectionReference(target.path, file.body) + suffix);
-    } catch {
-      onAddToChat?.(formatWorkspaceReference(target.path, false));
-    }
+    } catch (err) { console.error("[catch] WorkspacePanel.tsx:catch", err); }
   };
 
   const revealInFileManager = () => {
     if (!treeMenu) return;
     setTreeMenu(null);
-    void app.RevealWorkspacePath(treeMenu.path).catch(() => {});
+    void app.RevealWorkspacePath(treeMenu.path).catch(logCatch("async"));
   };
 
   const renderNormalRow = (row: TreeRow) => {

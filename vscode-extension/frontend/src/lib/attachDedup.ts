@@ -29,9 +29,7 @@ export async function sha256(blob: Blob): Promise<string> {
     const buf = await blob.arrayBuffer();
     const digest = await crypto.subtle.digest("SHA-256", buf);
     return bytesToHex(new Uint8Array(digest));
-  } catch {
-    return "";
-  }
+  } catch (err) { console.error("[catch] attachDedup.ts:catch", err); return ""; }
 }
 
 // DedupIndex tracks the SHA-256 hashes the user has already attached

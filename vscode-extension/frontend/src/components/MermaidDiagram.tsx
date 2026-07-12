@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { AlertCircle, Code2, Maximize2, Minimize2, Play, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { CopyButton } from "./CopyButton";
 import { openExternal } from "../lib/bridge";
+import { logCatch } from "../lib/logCatch";
 
 interface MermaidDiagramProps {
   definition: string;
@@ -215,7 +216,7 @@ async function ensurePanZoomFactory(): Promise<PanZoomFactory | null> {
       const factory = (("default" in mod ? mod.default : mod) as unknown) as PanZoomFactory;
       panZoomFactory = factory;
       return factory;
-    }).catch(() => null);
+    }).catch(logCatch("async", null));
   }
   return panZoomPromise;
 }
@@ -226,9 +227,7 @@ export function isSafeMermaidHref(href: string | null | undefined): boolean {
   if (value.startsWith("#")) return true;
   try {
     return SAFE_LINK_PROTOCOLS.has(new URL(value).protocol);
-  } catch {
-    return false;
-  }
+  } catch (err) { console.error("[catch] MermaidDiagram.tsx:catch", err); return false; }
 }
 
 export function isOpenableMermaidHref(href: string | null | undefined): boolean {
@@ -305,9 +304,7 @@ function destroyPanZoom(instance: PanZoomInstance | null): void {
   if (!instance) return;
   try {
     instance.destroy();
-  } catch {
-    /* svg-pan-zoom cleanup is best-effort across browser and test DOMs. */
-  }
+  } catch (err) { console.error("[catch] MermaidDiagram.tsx:catch", err); }
 }
 
 const MermaidDiagram = memo(function MermaidDiagram({ definition }: MermaidDiagramProps) {
@@ -392,10 +389,7 @@ const MermaidDiagram = memo(function MermaidDiagram({ definition }: MermaidDiagr
             instance?.fit();
             instance?.center();
           });
-        } catch {
-          instance = null;
-          panZoomRef.current = null;
-        }
+        } catch (err) { console.error("[catch] MermaidDiagram.tsx:catch", err); }
       });
     });
 

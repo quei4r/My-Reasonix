@@ -28,9 +28,7 @@ export function applyTextSize(size: TextSize): void {
   else root.setAttribute("data-text-size", size);
   try {
     localStorage.setItem(TEXT_SIZE_KEY, size);
-  } catch {
-    /* private mode / no storage - the in-DOM attribute still applies */
-  }
+  } catch (err) { console.error("[catch] textSize.ts:catch", err); }
 }
 
 export function initTextSize(): void {

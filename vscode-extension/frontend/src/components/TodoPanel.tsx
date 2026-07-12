@@ -34,9 +34,7 @@ function saveOpenState(stateKey: string, open: boolean): void {
     entries.push([stateKey, open]);
     const trimmed = entries.slice(-MAX_STORED_OPEN_STATES);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(trimmed)));
-  } catch {
-    /* ignore quota errors */
-  }
+  } catch (err) { console.error("[catch] TodoPanel.tsx:catch", err); }
 }
 
 // TodoPanel is the live task list pinned just above the composer — the kernel's

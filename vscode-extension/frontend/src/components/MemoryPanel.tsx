@@ -7,6 +7,7 @@ import { AnchoredPopover } from "./AnchoredPopover";
 import { ResizableDrawer } from "./ResizableDrawer";
 import { Tooltip } from "./Tooltip";
 import { ModalCloseButton } from "./ModalCloseButton";
+import { logCatch } from "../lib/logCatch";
 
 type LinkInfo = {
   name: string;
@@ -208,9 +209,7 @@ function readAutoSuggestionsPreference(): boolean {
   if (typeof window === "undefined") return false;
   try {
     return window.localStorage.getItem(AUTO_MEMORY_SUGGESTIONS_KEY) === "1";
-  } catch {
-    return false;
-  }
+  } catch (err) { console.error("[catch] MemoryPanel.tsx:catch", err); return false; }
 }
 
 function writeAutoSuggestionsPreference(enabled: boolean) {
@@ -221,9 +220,7 @@ function writeAutoSuggestionsPreference(enabled: boolean) {
     } else {
       window.localStorage.removeItem(AUTO_MEMORY_SUGGESTIONS_KEY);
     }
-  } catch {
-    // Ignore storage failures; the toggle still works for this render.
-  }
+  } catch (err) { console.error("[catch] MemoryPanel.tsx:catch", err); }
 }
 
 // MemoryPanel is the desktop memory manager: a right-side drawer over the loaded
@@ -782,7 +779,7 @@ export function MemorySettingsPage() {
 				const active = tabList.find((tb) => tb.active);
 				if (active) setSelectedTabId(active.id);
 			}
-		}).catch(() => {});
+		}).catch(logCatch("async"));
 	}, []);
 
 	// Deduplicate tabs by workspace: multiple conversations in the same project
@@ -818,7 +815,7 @@ export function MemorySettingsPage() {
 			if (prev && tabId) return { ...prev, facts: [], archives: [], docs: [] };
 			return prev;
 		});
-		setView(tabId ? await app.MemoryForTab(tabId).catch(() => null) : await app.Memory().catch(() => null));
+		setView(tabId ? await app.MemoryForTab(tabId).catch(logCatch("async", null)) : await app.Memory().catch(logCatch("MemoryForTab", null)));
 	}, [effectiveTabId]);
 
 	useEffect(() => { void reload(); }, [reload]);
